@@ -4,23 +4,29 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/usr/include",
-                "/usr/include/linux",
-                "/usr/local/include/**",
-                "/usr/src/linux-headers-5.15.0-116-generic/arch/**",
-                "/usr/src/linux-headers-5.15.0-116-generic/arch/x86/include/**",
-                "/usr/src/linux-headers-5.15.0-116-generic/include/**",
-                "/usr/lib/gcc/x86_64-linux-gnu/9/include/**",
-                "/usr/lib/modules/5.15.0-116-generic/build/arch/**",
-                "/usr/lib/modules/5.15.0-116-generic/build/arch/x86/include/**",
-                "/usr/lib/modules/5.15.0-116-generic/build/include/**",
-                "/usr/src/linux-hwe-5.15-headers-5.15.0-116/**"
+                "/usr/src/linux-headers-5.15.0-116-generic/arch/x86/include",
+                "/usr/src/linux-headers-5.15.0-116-generic/arch/x86/include/generated",
+                "/usr/src/linux-headers-5.15.0-116-generic/include",
+                "/usr/src/linux-headers-5.15.0-116-generic/arch/x86/include/uapi",
+                "/usr/src/linux-headers-5.15.0-116-generic/arch/x86/include/generated/uapi",
+                "/usr/src/linux-headers-5.15.0-116-generic/include/uapi",
+                "/usr/src/linux-headers-5.15.0-116-generic/include/generated/uapi",
+                "/usr/src/linux-headers-5.15.0-116-generic/ubuntu/include",
+                "/usr/lib/gcc/x86_64-linux-gnu/9/include"
             ],
             "defines": [
+                 "__KERNEL__",
+                "MODULE"
             ],
-            "cStandard": "c17",
-            "cppStandard": "gnu++14",
-            "intelliSenseMode": "linux-gcc-x64"
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++14",
+            "intelliSenseMode": "gcc-x64",
+            "compilerArgs": [
+                "-nostdinc",
+                "-include", "/usr/src/linux-headers-5.15.0-116-generic/include/linux/kconfig.h",
+                "-include", "/usr/src/linux-headers-5.15.0-116-generic/include/linux/compiler_types.h"
+            ]
         }
     ],
     "version": 4

@@ -23,6 +23,7 @@
         "cpumask.h": "c",
         "bug.h": "c",
         "bitmap.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "sched.h": "c"
     }
 }

@@ -1,0 +1,23 @@
+Il reference monitor deve bloccare tutte le operazioni di scrittura (quindi apertura in scrittura) su file/directory specificate nella sua configurazione, indipendentemente dallo user id.
+
+Gli stati del reference monitor sono:
+-ON -> In cui il reference monitor è attivo, cioè in base a come è configurato ammette o meno operazioni sui file
+-OFF -> In cui il reference monitor è disattivo, cioè si può fare tutto
+-REC-ON -> In cui il reference monitor è attivo o disattivo  e può essere anche riconfigurato, cioè aggiungere e togliere i path name protetti
+-REC-OFF -> In cui il reference monitor è attivo o disattivo e non può essere anche riconfigurato
+
+Per poter transitare tra gli stati il thread che richiede il transito deve avere effective user id root e immettere una password cifrata, che è nota anche allo stato del reference monitor, tale operazione di riconfigurazione può essere implementata tramite system call (faccio questa) o tramite driver con il VFS.
+
+Quando si riconfigura il reference monitor i servizi che il reference monitor controlla vengono disattivati.
+
+Quando il reference monitor è attivo e cè un tentativo di fare una delle operazioni bloccate si deve scrivere su un file system (può essere montato e smontato) contenente un unico file append-only (mi basta riferimenti al primo blocco, cioè inizio del file e ultima riga, cioè ultimo blocco) una tupla che contiene:
+- process TGID di chi tenta l'operazione
+- thread ID di chi tenta l'operazione
+- user-id di chi tenta l'operazione
+- effective user-id di chi tenta l'operazione
+- il program path-name di chi tenta l'operazione, , occhio che questo potrebbe sparire in tal caso si scrive hash mancante o qualcosa di simile
+- un cryptographic hash of the program file content di chi tenta l'operazione, occhio che questo potrebbe sparire in tal caso si scrive hash mancante o qualcosa di simile
+
+la scrittura di questa tupla va fata come deferred work (che funziona solo se il file system è montato, se non lo è si logga su dmesg).
+
+In realtà cè un inghippo il reference monitor si basa su pathname, ma in realtà un pathname è associato ad un solo file ma un file può essere associato a più pathname (associare più hardlink)

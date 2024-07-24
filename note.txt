@@ -1,0 +1,3 @@
+Per risolvere flex not found -> sudo apt-get install libncurses-dev flex bison openssl libssl-dev dkms libelf-dev libudev-dev libpci-dev libiberty-dev autoconf
+
+Per risolvere no such file rust etc -> Sostituire in makefile $(PWD) con $(shell pwd)

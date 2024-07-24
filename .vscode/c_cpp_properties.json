@@ -1,0 +1,27 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/usr/include",
+                "/usr/include/linux",
+                "/usr/local/include/**",
+                "/usr/src/linux-headers-5.15.0-116-generic/arch/**",
+                "/usr/src/linux-headers-5.15.0-116-generic/arch/x86/include/**",
+                "/usr/src/linux-headers-5.15.0-116-generic/include/**",
+                "/usr/lib/gcc/x86_64-linux-gnu/9/include/**",
+                "/usr/lib/modules/5.15.0-116-generic/build/arch/**",
+                "/usr/lib/modules/5.15.0-116-generic/build/arch/x86/include/**",
+                "/usr/lib/modules/5.15.0-116-generic/build/include/**",
+                "/usr/src/linux-hwe-5.15-headers-5.15.0-116/**"
+            ],
+            "defines": [
+            ],
+            "cStandard": "c17",
+            "cppStandard": "gnu++14",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}

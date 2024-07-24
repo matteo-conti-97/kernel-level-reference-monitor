@@ -24,6 +24,8 @@
         "bug.h": "c",
         "bitmap.h": "c",
         "string.h": "c",
-        "sched.h": "c"
+        "sched.h": "c",
+        "scth.h": "c",
+        "reference_monitor.h": "c"
     }
 }

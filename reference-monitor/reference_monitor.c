@@ -100,22 +100,22 @@ asmlinkage long sys_switch_state(int state, char *passwd)
                 case REC_ON:
                         printk("%s: setting reference monitor state to REC-ON\n", MODNAME);
                         reference_monitor.state = REC_ON;
-                        //Enable kprobes
+                        //TODO Enable kprobes
                         break;
                 case ON:
                         printk("%s: setting reference monitor state to ON\n", MODNAME);
                         reference_monitor.state = ON;
-                        //Enable kprobes
+                        //TODO Enable kprobes
                         break;
                 case REC_OFF:
                         printk("%s: setting reference monitor state to REC-OFF\n", MODNAME);
                         reference_monitor.state = REC_OFF;
-                        //Disable kprobes
+                        //TODO Disable kprobes
                         break;
                 case OFF:
                         printk("%s: setting reference monitor state to OFF\n", MODNAME);
                         reference_monitor.state = OFF;
-                        //Disable kprobes
+                        //TODO Disable kprobes
                         break;
                 default:
                         printk("%s: [ERROR] invalid state given\n", MODNAME);

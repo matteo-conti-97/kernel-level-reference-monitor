@@ -26,6 +26,8 @@
         "string.h": "c",
         "sched.h": "c",
         "scth.h": "c",
-        "reference_monitor.h": "c"
+        "reference_monitor.h": "c",
+        "crypto.h": "c",
+        "hash.h": "c"
     }
 }

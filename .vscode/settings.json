@@ -1,33 +1,6 @@
 {
     "files.associations": {
-        "module.h": "c",
-        "kernel.h": "c",
-        "sysinfo.h": "c",
-        "types.h": "c",
-        "posix_types.h": "c",
-        "stddef.h": "c",
-        "cdev.h": "c",
-        "kprobes.h": "c",
-        "errno.h": "c",
-        "fs.h": "c",
-        "kobject.h": "c",
-        "list.h": "c",
-        "sysfs.h": "c",
-        "kernfs.h": "c",
-        "lockdep.h": "c",
         "mutex.h": "c",
-        "spinlock_types.h": "c",
-        "atomic.h": "c",
-        "smp.h": "c",
-        "init.h": "c",
-        "cpumask.h": "c",
-        "bug.h": "c",
-        "bitmap.h": "c",
-        "string.h": "c",
-        "sched.h": "c",
-        "scth.h": "c",
-        "reference_monitor.h": "c",
-        "crypto.h": "c",
-        "hash.h": "c"
+        "string.h": "c"
     }
 }

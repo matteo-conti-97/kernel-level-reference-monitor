@@ -46,6 +46,8 @@ module_param(syscall_table_addr, ulong, 0660);
 char passwd[PASSWD_LEN];
 module_param_string(passwd, passwd, PASSWD_LEN, 0);
 
+reference_monitor ref_mon;
+
 unsigned long the_ni_syscall;
 
 unsigned long new_sys_call_array[] = {0x0, 0x1, 0x2, 0x3}; // please set to sys_vtpmo at startup
@@ -70,7 +72,7 @@ asmlinkage long sys_switch_state(int state, char *passwd)
         if (!uid_eq(current_euid(), GLOBAL_ROOT_UID))
         {
                 printk("%s: [ERROR] only user root can change the reference monitor configuration\n", MODNAME);
-                return -1;
+                return OP_NOT_PERMITTED_ERR;
         }
 
         // Check password hash
@@ -78,51 +80,51 @@ asmlinkage long sys_switch_state(int state, char *passwd)
         if (hash_passwd == NULL)
         {
                 printk("%s: could not allocate memory for password\n", MODNAME);
-                return -1;
+                return GENERIC_ERR;
         }
 
         if (compute_sha256(passwd, strlen(passwd), hash_passwd) < 0)
         {
                 printk("%s: could not compute sha256 of given password\n", MODNAME);
-                return -1;
+                return GENERIC_ERR;
         }
 
-        if (!compare_hashes(hash_passwd, reference_monitor.hash_passwd, HASH_LEN))
+        if (!compare_hashes(hash_passwd, ref_mon.hash_passwd, HASH_LEN))
         {
                 printk("%s: [ERROR] given password does not match\n", MODNAME);
-                return -1;
+                return PASSWD_MISMATCH_ERR;
         }
 
         //Lock the reference monitor and change the state
-        spin_lock(&reference_monitor.lock);
+        spin_lock(&ref_mon.lock);
         switch(state)
         {
                 case REC_ON:
                         printk("%s: setting reference monitor state to REC-ON\n", MODNAME);
-                        reference_monitor.state = REC_ON;
+                        ref_mon.state = REC_ON;
                         //TODO Enable kprobes
                         break;
                 case ON:
                         printk("%s: setting reference monitor state to ON\n", MODNAME);
-                        reference_monitor.state = ON;
+                        ref_mon.state = ON;
                         //TODO Enable kprobes
                         break;
                 case REC_OFF:
                         printk("%s: setting reference monitor state to REC-OFF\n", MODNAME);
-                        reference_monitor.state = REC_OFF;
+                        ref_mon.state = REC_OFF;
                         //TODO Disable kprobes
                         break;
                 case OFF:
                         printk("%s: setting reference monitor state to OFF\n", MODNAME);
-                        reference_monitor.state = OFF;
+                        ref_mon.state = OFF;
                         //TODO Disable kprobes
                         break;
                 default:
                         printk("%s: [ERROR] invalid state given\n", MODNAME);
-                        spin_unlock(&reference_monitor.lock);
-                        return -1;
+                        spin_unlock(&ref_mon.lock);
+                        return INVALID_STATE_ERR;
         }
-        spin_unlock(&reference_monitor.lock);
+        spin_unlock(&ref_mon.lock);
 
         return 0;
 }
@@ -136,34 +138,66 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
 {
 #endif
         char *hash_passwd;
+        int res;
         printk("%s: add_protected_res syscall called\n", MODNAME);
 
         //Check effective user id to be root
         if (!uid_eq(current_euid(), GLOBAL_ROOT_UID))
         {
                 printk("%s: [ERROR] only user root can change the reference monitor configuration\n", MODNAME);
-                return -1;
+                return OP_NOT_PERMITTED_ERR;
         }
 
         // Check password hash
         hash_passwd = kmalloc(HASH_LEN, GFP_KERNEL);
         if (hash_passwd == NULL)
         {
-                printk("%s: could not allocate memory for password\n", MODNAME);
-                return -1;
+                printk("%s: [ERROR] could not allocate memory for password\n", MODNAME);
+                return GENERIC_ERR;
         }
 
         if (compute_sha256(passwd, strlen(passwd), hash_passwd) < 0)
         {
-                printk("%s: could not compute sha256 of given password\n", MODNAME);
-                return -1;
+                printk("%s: [ERROR] could not compute sha256 of given password\n", MODNAME);
+                return GENERIC_ERR;
         }
 
-        if (!compare_hashes(hash_passwd, reference_monitor.hash_passwd, HASH_LEN))
+        if (!compare_hashes(hash_passwd, ref_mon.hash_passwd, HASH_LEN))
         {
                 printk("%s: [ERROR] given password does not match\n", MODNAME);
-                return -1;
+                return PASSWD_MISMATCH_ERR;
         }
+
+         //Check if reference monitor is in reconfiguration mode
+        if ((ref_mon.state != REC_ON) && (ref_mon.state != REC_OFF))
+        {
+                printk("%s: [ERROR] reference monitor is not in reconfiguration mode\n", MODNAME);
+                return OP_NOT_PERMITTED_ERR;
+        }
+
+        //Create the new protected resource
+        protected_resource *new_protected_resource = create_protected_resource(res_path);
+        if(new_protected_resource == NULL)
+        {
+                printk("%s: [ERROR] could not create new protected resource\n", MODNAME);
+                return GENERIC_ERR;
+        }
+
+        //Lock the reference monitor 
+        spin_lock(&ref_mon.lock);
+
+        //Add the new protected resource to the list
+        if (add_new_protected_resource(ref_mon.protected_resource_list_head, new_protected_resource) < 0)
+        {
+                printk("%s: [ERROR] resource already protected\n", MODNAME);
+                kfree(new_protected_resource->path);
+                kfree(new_protected_resource);
+                spin_unlock(&ref_mon.lock);
+                return RES_ALREADY_PROTECTED_ERR;
+        }
+
+        //Unlock the reference monitor
+        spin_unlock(&ref_mon.lock);
 
         return 0;
 }
@@ -183,28 +217,48 @@ asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
         if (!uid_eq(current_euid(), GLOBAL_ROOT_UID))
         {
                 printk("%s: [ERROR] only user root can change the reference monitor configuration\n", MODNAME);
-                return -1;
+                return OP_NOT_PERMITTED_ERR;
         }
 
         // Check password hash
         hash_passwd = kmalloc(HASH_LEN, GFP_KERNEL);
         if (hash_passwd == NULL)
         {
-                printk("%s: could not allocate memory for password\n", MODNAME);
-                return -1;
+                printk("%s: [ERROR] could not allocate memory for password\n", MODNAME);
+                return GENERIC_ERR;
         }
 
         if (compute_sha256(passwd, strlen(passwd), hash_passwd) < 0)
         {
-                printk("%s: could not compute sha256 of given password\n", MODNAME);
-                return -1;
+                printk("%s: [ERROR] could not compute sha256 of given password\n", MODNAME);
+                return GENERIC_ERR;
         }
 
-        if (!compare_hashes(hash_passwd, reference_monitor.hash_passwd, HASH_LEN))
+        if (!compare_hashes(hash_passwd, ref_mon.hash_passwd, HASH_LEN))
         {
                 printk("%s: [ERROR] given password does not match\n", MODNAME);
-                return -1;
+                return PASSWD_MISMATCH_ERR;
         }
+
+        //Check if reference monitor is in reconfiguration mode
+        if ((ref_mon.state != REC_ON) && (ref_mon.state != REC_OFF))
+        {
+                printk("%s: [ERROR] reference monitor is not in reconfiguration mode\n", MODNAME);
+                return OP_NOT_PERMITTED_ERR;
+        }
+
+        //Lock the reference monitor 
+        spin_lock(&ref_mon.lock);
+
+        if(remove_protected_resource(ref_mon.protected_resource_list_head, res_path) < 0)
+        {
+                printk("%s: [ERROR] resource not protected\n", MODNAME);
+                spin_unlock(&ref_mon.lock);
+                return RES_NOT_PROTECTED_ERR;
+        }
+
+        //Unlock the reference monitor
+        spin_unlock(&ref_mon.lock);
 
         return 0;
 }
@@ -238,35 +292,35 @@ int init_module(void)
         printk("%s: initializing reference monitor state\n", MODNAME);
 
         // setup password
-        reference_monitor.hash_passwd = kmalloc(HASH_LEN, GFP_KERNEL);
-        if (reference_monitor.hash_passwd == NULL)
+        ref_mon.hash_passwd = kmalloc(HASH_LEN, GFP_KERNEL);
+        if (ref_mon.hash_passwd == NULL)
         {
                 printk("%s: could not allocate memory for password\n", MODNAME);
-                return -1;
+                return GENERIC_ERR;
         }
 
-        if (compute_sha256(passwd, strlen(passwd), reference_monitor.hash_passwd) < 0)
+        if (compute_sha256(passwd, strlen(passwd), ref_mon.hash_passwd) < 0)
         {
                 printk("%s: could not compute sha256 of password\n", MODNAME);
-                return -1;
+                return GENERIC_ERR;
         }
 
         // delete password
         memset(passwd, 0, PASSWD_LEN);
 
         // setup state
-        reference_monitor.state = OFF;
+        ref_mon.state = OFF;
 
         // setup protected resources list
-        reference_monitor.protected_resource_list_head = NULL;
+        ref_mon.protected_resource_list_head = NULL;
 
         // setup lock
-        spin_lock_init(&reference_monitor.lock);
+        spin_lock_init(&ref_mon.lock);
 
         if (syscall_table_addr == 0x0)
         {
                 printk("%s: cannot manage sys_call_table address set to 0x0\n", MODNAME);
-                return -1;
+                return GENERIC_ERR;
         }
 
         AUDIT
@@ -285,7 +339,7 @@ int init_module(void)
         if (ret != HACKED_ENTRIES)
         {
                 printk("%s: could not hack %d entries (just %d)\n", MODNAME, HACKED_ENTRIES, ret);
-                return -1;
+                return GENERIC_ERR;
         }
 
         unprotect_memory();

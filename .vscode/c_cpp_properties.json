@@ -4,6 +4,7 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
+                "/usr/lib/gcc/x86_64-linux-gnu/9/include",
                 "/usr/src/linux-headers-5.15.0-116-generic/arch/x86/include",
                 "/usr/src/linux-headers-5.15.0-116-generic/arch/x86/include/generated",
                 "/usr/src/linux-headers-5.15.0-116-generic/include",
@@ -12,20 +13,22 @@
                 "/usr/src/linux-headers-5.15.0-116-generic/include/uapi",
                 "/usr/src/linux-headers-5.15.0-116-generic/include/generated/uapi",
                 "/usr/src/linux-headers-5.15.0-116-generic/ubuntu/include",
-                "/usr/lib/gcc/x86_64-linux-gnu/9/include"
+                "/usr/include"
             ],
             "defines": [
-                 "__KERNEL__",
+                "__KERNEL__",
                 "MODULE"
             ],
-            "compilerPath": "/usr/bin/gcc",
+            "compilerPath": "",
             "cStandard": "c11",
             "cppStandard": "c++14",
             "intelliSenseMode": "gcc-x64",
             "compilerArgs": [
                 "-nostdinc",
-                "-include", "/usr/src/linux-headers-5.15.0-116-generic/include/linux/kconfig.h",
-                "-include", "/usr/src/linux-headers-5.15.0-116-generic/include/linux/compiler_types.h"
+                "-include",
+                "/usr/src/linux-headers-5.15.0-116-generic/include/linux/kconfig.h",
+                "-include",
+                "/usr/src/linux-headers-5.15.0-116-generic/include/linux/compiler_types.h"
             ]
         }
     ],

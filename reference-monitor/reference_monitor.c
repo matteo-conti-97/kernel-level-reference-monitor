@@ -66,6 +66,7 @@ asmlinkage long sys_switch_state(int state, char *passwd)
 {
 #endif
         char *hash_passwd;
+        int prev_state;
         printk("%s: switch_state syscall called\n", MODNAME);
 
         //Check effective user id to be root
@@ -95,36 +96,61 @@ asmlinkage long sys_switch_state(int state, char *passwd)
                 return PASSWD_MISMATCH_ERR;
         }
 
-        //Lock the reference monitor and change the state
-        spin_lock(&ref_mon.lock);
+        //Switch state
         switch(state)
         {
                 case REC_ON:
                         printk("%s: setting reference monitor state to REC-ON\n", MODNAME);
+                        spin_lock(&ref_mon.lock);
+                        prev_state = ref_mon.state;
                         ref_mon.state = REC_ON;
-                        //TODO Enable kprobes
+                        spin_unlock(&ref_mon.lock);
+
+                        if((prev_state == OFF)||(prev_state == REC_OFF))
+                        {
+                                //TODO Enable kprobes
+                        }
                         break;
                 case ON:
                         printk("%s: setting reference monitor state to ON\n", MODNAME);
+                        spin_lock(&ref_mon.lock);
+                        prev_state = ref_mon.state;
                         ref_mon.state = ON;
-                        //TODO Enable kprobes
+                        spin_unlock(&ref_mon.lock);
+
+                        if((prev_state == OFF)||(prev_state == REC_OFF))
+                        {
+                                //TODO Enable kprobes
+                        }
                         break;
                 case REC_OFF:
                         printk("%s: setting reference monitor state to REC-OFF\n", MODNAME);
+                        spin_lock(&ref_mon.lock);
+                        prev_state = ref_mon.state;
                         ref_mon.state = REC_OFF;
-                        //TODO Disable kprobes
+                        spin_unlock(&ref_mon.lock);
+
+                        if((prev_state == ON)||(prev_state == REC_ON))
+                        {
+                                //TODO Disable kprobes
+                        }
                         break;
                 case OFF:
                         printk("%s: setting reference monitor state to OFF\n", MODNAME);
+                        spin_lock(&ref_mon.lock);
+                        prev_state = ref_mon.state;
                         ref_mon.state = OFF;
-                        //TODO Disable kprobes
+                        spin_unlock(&ref_mon.lock);
+                        
+                        if((prev_state == ON)||(prev_state == REC_ON))
+                        {
+                                //TODO Disable kprobes
+                        }
                         break;
                 default:
                         printk("%s: [ERROR] invalid state given\n", MODNAME);
-                        spin_unlock(&ref_mon.lock);
                         return INVALID_STATE_ERR;
         }
-        spin_unlock(&ref_mon.lock);
 
         return 0;
 }

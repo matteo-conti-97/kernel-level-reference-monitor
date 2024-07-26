@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "mutex.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "spinlock.h": "c"
     }
 }

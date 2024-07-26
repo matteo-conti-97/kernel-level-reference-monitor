@@ -12,6 +12,7 @@
 #define HASH_LEN 32
 
 //Error codes
+#define SUCCESS 0
 #define GENERIC_ERR -1 
 #define OP_NOT_PERMITTED_ERR -2
 #define PASSWD_MISMATCH_ERR -3

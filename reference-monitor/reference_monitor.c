@@ -141,7 +141,7 @@ asmlinkage long sys_switch_state(int state, char *passwd)
                         prev_state = ref_mon.state;
                         ref_mon.state = OFF;
                         spin_unlock(&ref_mon.lock);
-                        
+
                         if((prev_state == ON)||(prev_state == REC_ON))
                         {
                                 //TODO Disable kprobes
@@ -152,7 +152,7 @@ asmlinkage long sys_switch_state(int state, char *passwd)
                         return INVALID_STATE_ERR;
         }
 
-        return 0;
+        return SUCCESS;
 }
 
 // Add the path of a new protected resource by the reference monitor
@@ -164,7 +164,7 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
 {
 #endif
         char *hash_passwd;
-        int res;
+        protected_resource *new_protected_resource;
         printk("%s: add_protected_res syscall called\n", MODNAME);
 
         //Check effective user id to be root
@@ -202,7 +202,7 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
         }
 
         //Create the new protected resource
-        protected_resource *new_protected_resource = create_protected_resource(res_path);
+        new_protected_resource = create_protected_resource(res_path);
         if(new_protected_resource == NULL)
         {
                 printk("%s: [ERROR] could not create new protected resource\n", MODNAME);
@@ -225,7 +225,7 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
         //Unlock the reference monitor
         spin_unlock(&ref_mon.lock);
 
-        return 0;
+        return SUCCESS;
 }
 
 // Remove the path of a protected resource by the reference monitor
@@ -286,7 +286,7 @@ asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
         //Unlock the reference monitor
         spin_unlock(&ref_mon.lock);
 
-        return 0;
+        return SUCCESS;
 }
 
 // Get the path of all the protected resources by the reference monitor
@@ -298,7 +298,7 @@ asmlinkage long sys_get_protected_res_list(char **buff)
 {
 #endif
         printk("%s: get_protected_res_list syscall called\n", MODNAME);
-        return 0;
+        return SUCCESS;
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
@@ -381,7 +381,7 @@ int init_module(void)
 
         printk("%s: reference monitor correctly initialized\n", MODNAME);
 
-        return 0;
+        return SUCCESS;
 }
 
 void cleanup_module(void)

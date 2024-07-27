@@ -1,7 +1,7 @@
--Implement reference monitor state DONE
--Implement system call to switch state DONE But missing kprope enabling
--Implement system call to add protected resource
--Implement system call to remove protected resource
+-Implement reference monitor state - DONE
+-Implement system call to switch state - DONE But missing kprope enabling
+-Implement system call to add protected resource - DONE
+-Implement system call to remove protected resource - DONE
 -Implement system call get protected resources list
 -Implement kernel probe to reject access to protected resources
 -Implement single file filesystem for logging

@@ -3,11 +3,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <../reference-monitor/states.h>
 
-#define ON 0
-#define OFF 1
-#define REC_ON 2
-#define REC_OFF 3
 
 int sys_switch = 134;
 

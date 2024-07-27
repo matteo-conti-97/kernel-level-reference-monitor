@@ -4,15 +4,14 @@
 #include <unistd.h>
 #include <errno.h>
 #include <../reference-monitor/error_codes.h>
-#include <../reference-monitor/states.h>
 
-int sys_switch = 134;
+int sys_add = 156;
 
-int check_switch(int state, char *passwd){
-    long res = syscall(sys_switch, state, passwd);
+void check_add(char *path, char *passwd){
+    long res = syscall(sys_add, path, passwd);
     switch(errno){
         case SUCCESS:
-            printf("Success\n");
+            printf("Resource added successfully\n");
             break;
         case -GENERIC_ERR:
             printf("Generic error\n");
@@ -34,10 +33,16 @@ int check_switch(int state, char *passwd){
 
 int main(int argc, char *argv[]){
     char passwd[128] = "1234";
-    check_switch(ON, passwd);
-    check_switch(OFF, passwd);
-    check_switch(REC_ON, passwd);
-    check_switch(REC_OFF, passwd);
-    check_switch(50, passwd);
+    char path[128] = "/home/matteo/ref_mon_test/test_file";
+
+    if(argc < 2){
+        printf("Usage: %s <num_copies>\n", argv[0]);
+        return -1;
+    }
+
+    int num_copies = atoi(argv[2]);
+    for(int i = 0; i < num_copies; i++)
+        check_add(path, passwd);
+
 	return 0;
 }

@@ -33,6 +33,8 @@ Threads could also be awaken in non-FIFO order because of Posix signals.
 #include <linux/syscalls.h>
 #include "lib/include/scth.h"
 #include "reference_monitor.h"
+#include "states.h"
+#include "error_codes.h"
 #include "../utils/utils.h"
 
 MODULE_LICENSE("GPL");
@@ -81,7 +83,7 @@ asmlinkage long sys_switch_state(int state, char *passwd)
         if (hash_passwd == NULL)
         {
                 printk("%s: could not allocate memory for password\n", MODNAME);
-                return GENERIC_ERR;
+                return -ENOMEM;
         }
 
         if (compute_sha256(passwd, strlen(passwd), hash_passwd) < 0)
@@ -179,7 +181,7 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
         if (hash_passwd == NULL)
         {
                 printk("%s: [ERROR] could not allocate memory for password\n", MODNAME);
-                return GENERIC_ERR;
+                return -ENOMEM;
         }
 
         if (compute_sha256(passwd, strlen(passwd), hash_passwd) < 0)
@@ -245,7 +247,7 @@ asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
         if (hash_passwd == NULL)
         {
                 printk("%s: [ERROR] could not allocate memory for password\n", MODNAME);
-                return GENERIC_ERR;
+                return -ENOMEM;
         }
 
         if (compute_sha256(passwd, strlen(passwd), hash_passwd) < 0)
@@ -287,13 +289,13 @@ asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
 
 // Get the path of all the protected resources by the reference monitor
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
-__SYSCALL_DEFINEx(1, _get_protected_res_list, char **, buff)
+__SYSCALL_DEFINEx(2, _get_protected_res_list, char **, buff, int *, buff_size)
 {
 #else
-asmlinkage long sys_get_protected_res_list(char **buff)
+asmlinkage long sys_get_protected_res_list(char **buff, int * buff_size)
 {
 #endif
-        printk("%s: get_protected_res_list syscall called\n", MODNAME);
+    
         return SUCCESS;
 }
 
@@ -318,7 +320,7 @@ int init_module(void)
         if (ref_mon.hash_passwd == NULL)
         {
                 printk("%s: could not allocate memory for password\n", MODNAME);
-                return GENERIC_ERR;
+                return -ENOMEM;
         }
 
         if (compute_sha256(passwd, strlen(passwd), ref_mon.hash_passwd) < 0)

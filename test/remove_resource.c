@@ -4,15 +4,16 @@
 #include <unistd.h>
 #include <errno.h>
 #include <../reference-monitor/error_codes.h>
-#include <../reference-monitor/states.h>
 
-int sys_switch = 134;
 
-int check_switch(int state, char *passwd){
-    long res = syscall(sys_switch, state, passwd);
+int sys_rm = 174;
+
+
+void check_rm(char *path, char *passwd){
+    long res = syscall(sys_rm, path, passwd);
     switch(errno){
         case SUCCESS:
-            printf("Success\n");
+            printf("Resource removed successfully\n");
             break;
         case -GENERIC_ERR:
             printf("Generic error\n");
@@ -22,6 +23,9 @@ int check_switch(int state, char *passwd){
             break;
         case -PASSWD_MISMATCH_ERR:
             printf("Password mismatch\n");
+            break;
+        case -RES_NOT_PROTECTED_ERR:
+            printf("Resource not protected\n");
             break;
         case -INVALID_STATE_ERR:
             printf("Invalid state\n");
@@ -34,10 +38,17 @@ int check_switch(int state, char *passwd){
 
 int main(int argc, char *argv[]){
     char passwd[128] = "1234";
-    check_switch(ON, passwd);
-    check_switch(OFF, passwd);
-    check_switch(REC_ON, passwd);
-    check_switch(REC_OFF, passwd);
-    check_switch(50, passwd);
+    char path[128] = "/home/matteo/ref_mon_test/test_file";
+
+    if(argc < 2){
+        printf("Usage: %s <num times>\n", argv[0]);
+        return -1;
+    }
+
+    int num_times = atoi(argv[1]);
+
+    for(int i = 0; i < num_times; i++)
+        check_rm(path, passwd);
+
 	return 0;
 }

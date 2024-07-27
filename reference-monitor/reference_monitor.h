@@ -1,24 +1,8 @@
 #include <linux/spinlock.h>
 #include <linux/string.h>
 
-//States of the reference monitor
-#define ON 0
-#define OFF 1
-#define REC_ON 2
-#define REC_OFF 3
-
-
 #define PASSWD_LEN 128
 #define HASH_LEN 32
-
-//Error codes
-#define SUCCESS 0
-#define GENERIC_ERR -1 
-#define OP_NOT_PERMITTED_ERR -2
-#define PASSWD_MISMATCH_ERR -3
-#define RES_NOT_PROTECTED_ERR -4
-#define INVALID_STATE_ERR -5
-
 
 typedef struct reference_monitor {
     int state;
@@ -51,6 +35,8 @@ protected_resource *create_protected_resource(char *res_path){
 
 // Function to insert a node at the beginning of the list
 void add_new_protected_resource(reference_monitor *ref_mon, protected_resource *new_protected_resource) {
+
+    //Insert the new protected resource at the beginning of the list
     new_protected_resource->next = ref_mon->protected_resource_list_head;
     ref_mon->protected_resource_list_head = new_protected_resource;
 }
@@ -71,6 +57,7 @@ int remove_protected_resource(reference_monitor *ref_mon, char *res_path) {
 
             kfree(curr->path);
             kfree(curr);
+
             return 0;
         }
         prev = curr;

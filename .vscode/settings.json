@@ -2,6 +2,7 @@
     "files.associations": {
         "mutex.h": "c",
         "string.h": "c",
-        "spinlock.h": "c"
+        "spinlock.h": "c",
+        "error_codes.h": "c"
     }
 }

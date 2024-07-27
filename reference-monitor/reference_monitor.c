@@ -173,7 +173,7 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
                 printk("%s: [ERROR] only user root can change the reference monitor configuration\n", MODNAME);
                 return OP_NOT_PERMITTED_ERR;
         }
-
+        
         // Check password hash
         hash_passwd = kmalloc(HASH_LEN, GFP_KERNEL);
         if (hash_passwd == NULL)
@@ -213,14 +213,7 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
         spin_lock(&ref_mon.lock);
 
         //Add the new protected resource to the list
-        if (add_new_protected_resource(ref_mon.protected_resource_list_head, new_protected_resource) < 0)
-        {
-                printk("%s: [ERROR] resource already protected\n", MODNAME);
-                kfree(new_protected_resource->path);
-                kfree(new_protected_resource);
-                spin_unlock(&ref_mon.lock);
-                return RES_ALREADY_PROTECTED_ERR;
-        }
+        add_new_protected_resource(&ref_mon, new_protected_resource);
 
         //Unlock the reference monitor
         spin_unlock(&ref_mon.lock);
@@ -236,6 +229,7 @@ __SYSCALL_DEFINEx(2, _rm_protected_res, char *, res_path, char *, passwd)
 asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
 {
 #endif
+        int i = 0;
         char *hash_passwd;
         printk("%s: rm_protected_res syscall called\n", MODNAME);
 
@@ -276,13 +270,15 @@ asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
         //Lock the reference monitor 
         spin_lock(&ref_mon.lock);
 
-        if(remove_protected_resource(ref_mon.protected_resource_list_head, res_path) < 0)
-        {
+        while(remove_protected_resource(&ref_mon, res_path) >= 0) i++;
+
+        if(i == 0){
                 printk("%s: [ERROR] resource not protected\n", MODNAME);
                 spin_unlock(&ref_mon.lock);
                 return RES_NOT_PROTECTED_ERR;
         }
-
+        printk("%s: removed protected resource %d times\n", MODNAME, i);
+        
         //Unlock the reference monitor
         spin_unlock(&ref_mon.lock);
 
@@ -335,7 +331,7 @@ int init_module(void)
         memset(passwd, 0, PASSWD_LEN);
 
         // setup state
-        ref_mon.state = OFF;
+        ref_mon.state = REC_ON;
 
         // setup protected resources list
         ref_mon.protected_resource_list_head = NULL;

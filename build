@@ -14,4 +14,12 @@ cd reference-monitor || { echo "Failed to enter directory reference-monitor"; ex
 # Run make
 make all || { echo "Make command failed"; exit 1; }
 
+cd ..
+
+# Navigate to directory test
+cd test || { echo "Failed to enter directory test"; exit 1; }
+
+# Run make
+make build || { echo "Make command failed"; exit 1; }
+
 echo "Build successful"

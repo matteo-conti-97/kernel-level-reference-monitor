@@ -16,7 +16,6 @@
 #define GENERIC_ERR -1 
 #define OP_NOT_PERMITTED_ERR -2
 #define PASSWD_MISMATCH_ERR -3
-#define RES_ALREADY_PROTECTED_ERR -4
 #define RES_NOT_PROTECTED_ERR -4
 #define INVALID_STATE_ERR -5
 
@@ -24,7 +23,7 @@
 typedef struct reference_monitor {
     int state;
     char *hash_passwd;
-    struct protected_resource **protected_resource_list_head;
+    struct protected_resource *protected_resource_list_head;
     spinlock_t lock;
 }reference_monitor;
 
@@ -51,35 +50,21 @@ protected_resource *create_protected_resource(char *res_path){
 }
 
 // Function to insert a node at the beginning of the list
-int add_new_protected_resource(protected_resource **head, protected_resource *new_protected_resource) {
-    protected_resource *curr = *head;
-    protected_resource *prev = NULL;
-
-    // Check if the resource is already in the list
-    while (curr != NULL) {
-        if (strcmp(curr->path, new_protected_resource->path) == 0) {
-            return -1;
-        }
-        prev = curr;
-        curr = curr->next;
-    }
-
-    // If the resource is not already in the list
-    new_protected_resource->next = *head;
-    *head = new_protected_resource;
-    return 0;
+void add_new_protected_resource(reference_monitor *ref_mon, protected_resource *new_protected_resource) {
+    new_protected_resource->next = ref_mon->protected_resource_list_head;
+    ref_mon->protected_resource_list_head = new_protected_resource;
 }
 
 // Function to remove a node from the list
-int remove_protected_resource(protected_resource **head, char *res_path) {
-    protected_resource *curr = *head;
+int remove_protected_resource(reference_monitor *ref_mon, char *res_path) {
+    protected_resource *curr = ref_mon->protected_resource_list_head;
     protected_resource *prev = NULL;
 
     while (curr != NULL) {
         if (strcmp(curr->path, res_path) == 0) {
             // If the node to be removed is the head node
             if (prev == NULL) 
-                *head = curr->next;
+                ref_mon->protected_resource_list_head = curr->next;
             // If the node to be removed is not the head node
             else 
                 prev->next = curr->next;
@@ -92,6 +77,6 @@ int remove_protected_resource(protected_resource **head, char *res_path) {
         curr = curr->next;
     }
 
-    // If the node to be removed is not found
+    //If the node to be removed is not found
     return -1;
 }

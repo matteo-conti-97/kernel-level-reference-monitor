@@ -27,28 +27,74 @@
 
 #define KPROBES_SIZE 37
 
-struct kretprobe x64_sys_open, sys_open;
-struct kretprobe x64_sys_truncate, sys_truncate;
-struct kretprobe x64_sys_rename, sys_rename;
-struct kretprobe x64_sys_mkdir, sys_mkdir;
-struct kretprobe x64_sys_mknod, sys_mknod;
-struct kretprobe x64_sys_rmdir, sys_rmdir;
-struct kretprobe x64_sys_creat, sys_creat;
-struct kretprobe x64_sys_link, sys_link;
-struct kretprobe x64_sys_unlink, sys_unlink;
-struct kretprobe x64_sys_symlink, sys_symlink;
-struct kretprobe x64_sys_renameat, sys_renameat;
-struct kretprobe x64_sys_unlinkat, sys_unlinkat;
-struct kretprobe x64_sys_linkat, sys_linkat;
-struct kretprobe x64_sys_symlinkat, sys_symlinkat;
-struct kretprobe x64_sys_mkdirat, sys_mkdirat;
-struct kretprobe x64_sys_mknodat, sys_mknodat;
-struct kretprobe x64_sys_openat, sys_openat;
-struct kretprobe x64_sys_renameat2, sys_renameat2;
-struct kretprobe x64_sys_openat2;
+struct kretprobe kprobe_array[(KPROBES_SIZE/2)+1][2];
 
-// kretprobes array
-kprobe_array[KPROBES_SIZE];
+char *symbol_names[(KPROBES_SIZE/2)+1][2] = {
+    {"__x64_sys_open", "sys_open"},
+    {"__x64_sys_truncate", "sys_truncate"},
+    {"__x64_sys_rename", "sys_rename"},
+    {"__x64_sys_mkdir", "sys_mkdir"},
+    {"__x64_sys_mknod", "sys_mknod"},
+    {"__x64_sys_rmdir", "sys_rmdir"},
+    {"__x64_sys_creat", "sys_creat"},
+    {"__x64_sys_link", "sys_link"},
+    {"__x64_sys_unlink", "sys_unlink"},
+    {"__x64_sys_symlink", "sys_symlink"},
+    {"__x64_sys_renameat", "sys_renameat"},
+    {"__x64_sys_unlinkat", "sys_unlinkat"},
+    {"__x64_sys_linkat", "sys_linkat"},
+    {"__x64_sys_symlinkat", "sys_symlinkat"},
+    {"__x64_sys_mkdirat", "sys_mkdirat"},
+    {"__x64_sys_mknodat", "sys_mknodat"},
+    {"__x64_sys_openat", "sys_openat"},
+    {"__x64_sys_renameat2", "sys_renameat2"},
+    {"__x64_sys_openat2", NULL}
+};
+
+int sys_open_handler();
+int sys_truncate_handler();
+int sys_rename_handler();
+int sys_mkdir_handler();
+int sys_mknod_handler();
+int sys_rmdir_handler();
+int sys_creat_handler();
+int sys_link_handler();
+int sys_unlink_handler();
+int sys_symlink_handler();
+int sys_renameat_handler();
+int sys_unlinkat_handler();
+int sys_linkat_handler();
+int sys_symlinkat_handler();
+int sys_mkdirat_handler();
+int sys_mknodat_handler();
+int sys_openat_handler();
+int sys_renameat2_handler();
+int sys_openat2_handler();
+
+typedef void (*func_ptr)();
+
+func_ptr func_array[(KPROBES_SIZE/2)+1] = {
+    (func_ptr)sys_open_handler,
+    (func_ptr)sys_truncate_handler,
+    (func_ptr)sys_rename_handler,
+    (func_ptr)sys_mkdir_handler,
+    (func_ptr)sys_mknod_handler,
+    (func_ptr)sys_rmdir_handler,
+    (func_ptr)sys_creat_handler,
+    (func_ptr)sys_link_handler,
+    (func_ptr)sys_unlink_handler,
+    (func_ptr)sys_symlink_handler,
+    (func_ptr)sys_renameat_handler,
+    (func_ptr)sys_unlinkat_handler,
+    (func_ptr)sys_linkat_handler,
+    (func_ptr)sys_symlinkat_handler,
+    (func_ptr)sys_mkdirat_handler,
+    (func_ptr)sys_mknodat_handler,
+    (func_ptr)sys_openat_handler,
+    (func_ptr)sys_renameat2_handler,
+    (func_ptr)sys_openat2_handler
+}; 
+
 
 void setup_probe(struct kretprobe *probe, char *symbol, kretprobe_handler_t entry_handler, kretprobe_handler_t ret_handler)
 {
@@ -62,91 +108,19 @@ void setup_probe(struct kretprobe *probe, char *symbol, kretprobe_handler_t entr
 int kretprobe_init()
 {
     int ret;
-    //Init probe TODO SET REAL ENTRY AND RET HANDLERS
-    set_kretprobe(&x64_sys_open, "__x64_sys_open", NULL, NULL);
-    set_kretprobe(&sys_open, "sys_open", NULL, NULL);
-    set_kretprobe(&x64_sys_truncate, "__x64_sys_truncate", NULL, NULL);
-    set_kretprobe(&sys_truncate, "sys_truncate", NULL, NULL);
-    set_kretprobe(&x64_sys_rename, "__x64_sys_rename", NULL, NULL);
-    set_kretprobe(&sys_rename, "sys_rename", NULL, NULL);
-    set_kretprobe(&x64_sys_mkdir, "__x64_sys_mkdir", NULL, NULL);
-    set_kretprobe(&sys_mkdir, "sys_mkdir", NULL, NULL);
-    set_kretprobe(&x64_sys_mknod, "__x64_sys_mknod", NULL, NULL);
-    set_kretprobe(&sys_mknod, "sys_mknod", NULL, NULL);
-    set_kretprobe(&x64_sys_rmdir, "__x64_sys_rmdir", NULL, NULL);
-    set_kretprobe(&sys_rmdir, "sys_rmdir", NULL, NULL);
-    set_kretprobe(&x64_sys_creat, "__x64_sys_creat", NULL, NULL);
-    set_kretprobe(&sys_creat, "sys_creat", NULL, NULL);
-    set_kretprobe(&x64_sys_link, "__x64_sys_link", NULL, NULL);
-    set_kretprobe(&sys_link, "sys_link", NULL, NULL);
-    set_kretprobe(&x64_sys_unlink, "__x64_sys_unlink", NULL, NULL);
-    set_kretprobe(&sys_unlink, "sys_unlink", NULL, NULL);
-    set_kretprobe(&x64_sys_symlink, "__x64_sys_symlink", NULL, NULL);
-    set_kretprobe(&sys_symlink, "sys_symlink", NULL, NULL);
-    set_kretprobe(&x64_sys_renameat, "__x64_sys_renameat", NULL, NULL);
-    set_kretprobe(&sys_renameat, "sys_renameat", NULL, NULL);
-    set_kretprobe(&x64_sys_unlinkat, "__x64_sys_unlinkat", NULL, NULL);
-    set_kretprobe(&sys_unlinkat, "sys_unlinkat", NULL, NULL);
-    set_kretprobe(&x64_sys_linkat, "__x64_sys_linkat", NULL, NULL);
-    set_kretprobe(&sys_linkat, "sys_linkat", NULL, NULL);
-    set_kretprobe(&x64_sys_symlinkat, "__x64_sys_symlinkat", NULL, NULL);
-    set_kretprobe(&sys_symlinkat, "sys_symlinkat", NULL, NULL);
-    set_kretprobe(&x64_sys_mkdirat, "__x64_sys_mkdirat", NULL, NULL);
-    set_kretprobe(&sys_mkdirat, "sys_mkdirat", NULL, NULL);
-    set_kretprobe(&x64_sys_mknodat, "__x64_sys_mknodat", NULL, NULL);
-    set_kretprobe(&sys_mknodat, "sys_mknodat", NULL, NULL);
-    set_kretprobe(&x64_sys_openat, "__x64_sys_openat", NULL, NULL);
-    set_kretprobe(&sys_openat, "sys_openat", NULL, NULL);
-    set_kretprobe(&x64_sys_renameat2, "__x64_sys_renameat2", NULL, NULL);
-    set_kretprobe(&sys_renameat2, "sys_renameat2", NULL, NULL);
-    set_kretprobe(&x64_sys_openat2, "__x64_sys_openat2", NULL, NULL);
-
-    
-
-    kprobe_array[0] = &x64_sys_open;
-    kprobe_array[1] = &sys_open;
-    kprobe_array[2] = &x64_sys_truncate;
-    kprobe_array[3] = &sys_truncate;
-    kprobe_array[4] = &x64_sys_rename;
-    kprobe_array[5] = &sys_rename;
-    kprobe_array[6] = &x64_sys_mkdir;
-    kprobe_array[7] = &sys_mkdir;
-    kprobe_array[8] = &x64_sys_mknod;
-    kprobe_array[9] = &sys_mknod;
-    kprobe_array[10] = &x64_sys_rmdir;
-    kprobe_array[11] = &sys_rmdir;
-    kprobe_array[12] = &x64_sys_creat;
-    kprobe_array[13] = &sys_creat;
-    kprobe_array[14] = &x64_sys_link;
-    kprobe_array[15] = &sys_link;
-    kprobe_array[16] = &x64_sys_unlink;
-    kprobe_array[17] = &sys_unlink;
-    kprobe_array[18] = &x64_sys_symlink;
-    kprobe_array[19] = &sys_symlink;
-    kprobe_array[20] = &x64_sys_renameat;
-    kprobe_array[21] = &sys_renameat;
-    kprobe_array[22] = &x64_sys_unlinkat;
-    kprobe_array[23] = &sys_unlinkat;
-    kprobe_array[24] = &x64_sys_linkat;
-    kprobe_array[25] = &sys_linkat;
-    kprobe_array[26] = &x64_sys_symlinkat;
-    kprobe_array[27] = &sys_symlinkat;
-    kprobe_array[28] = &x64_sys_mkdirat;
-    kprobe_array[29] = &sys_mkdirat;
-    kprobe_array[30] = &x64_sys_mknodat;
-    kprobe_array[31] = &sys_mknodat;
-    kprobe_array[32] = &x64_sys_openat;
-    kprobe_array[33] = &sys_openat;
-    kprobe_array[34] = &x64_sys_renameat2;
-    kprobe_array[35] = &sys_renameat2;
-    kprobe_array[36] = &x64_sys_openat2;
-
-
-    ret = register_kretprobes(kprobe_array, KPROBES_SIZE);
-    if (ret != 0)
+    //Setup and register probes
+    for(int i=0;i<(KPROBES_SIZE/2)+1;i+=2)
     {
-        printk("[ERROR] Kretprobes registration failed, returned %d\n", ret);
-        return ret;
+        for (int j=0;j<2;j++){
+            if(symbol_names[i][j] != NULL)
+                setup_probe(&kprobe_array[i][j], symbol_names[i][j], NULL, NULL);
+                ret = register_kretprobe(&kprobe_array[i][j]);
+                if (ret < 0)
+                {
+                    printk("[ERROR] Kretprobe registration failed\n");
+                    return ret;
+                }
+        }
     }
     
     printk("[INFO] Kretprobes correctly installed\n");
@@ -157,7 +131,13 @@ int kretprobe_init()
 
 void kretprobe_clean()
 {
-    unregister_kretprobes(kprobe_array, KPROBES_SIZE);
+    for(int i=0;i<(KPROBES_SIZE/2)+1;i+=2)
+    {
+        for (int j=0;j<2;j++){
+            if(symbol_names[i][j] != NULL)
+                unregister_kretprobe(&kprobe_array[i][j]);
+        }
+    }
 
     printk("[INFO] Kretprobes correctly removed\n");
     

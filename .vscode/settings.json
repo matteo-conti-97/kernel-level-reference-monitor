@@ -3,6 +3,9 @@
         "mutex.h": "c",
         "string.h": "c",
         "spinlock.h": "c",
-        "error_codes.h": "c"
+        "error_codes.h": "c",
+        "stack_reference_monitor.h": "c",
+        "device.h": "c",
+        "syscalls.h": "c"
     }
 }

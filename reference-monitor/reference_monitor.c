@@ -470,13 +470,12 @@ void setup_probe(struct kretprobe *probe, char *symbol, kretprobe_handler_t entr
     probe->maxactive = -1; // unlimited instances cause it's stateless
 }
 
-int kretprobe_init()
-{
-    int ret;
+int kretprobe_init(){
+    int ret = 0 , i, j;
     //Setup and register probes
-    for(int i=0;i<(KPROBES_SIZE/2)+1;i+=2)
+    for(i=0;i<(KPROBES_SIZE/2)+1;i+=2)
     {
-        for (int j=0;j<2;j++){
+        for (j=0;j<2;j++){
             if(symbol_names[i][j] != NULL)
                 setup_probe(&kprobe_array[i][j], symbol_names[i][j], NULL, NULL);
                 ret = register_kretprobe(&kprobe_array[i][j]);
@@ -489,24 +488,23 @@ int kretprobe_init()
     }
     
     printk("[INFO] Kretprobes correctly installed\n");
-    
 
-    return 0;
+    return ret;
 }
 
-void kretprobe_clean()
-{
-    for(int i=0;i<(KPROBES_SIZE/2)+1;i+=2)
-    {
-        for (int j=0;j<2;j++){
-            if(symbol_names[i][j] != NULL)
-                unregister_kretprobe(&kprobe_array[i][j]);
+void kretprobe_clean(){
+        int i, j;
+        for(i=0;i<(KPROBES_SIZE/2)+1;i+=2)
+        {
+                for (j=0;j<2;j++){
+                        if(symbol_names[i][j] != NULL)
+                                unregister_kretprobe(&kprobe_array[i][j]);
+                }       
         }
-    }
 
-    printk("[INFO] Kretprobes correctly removed\n");
-    
-    kfree(kprobe_array);
+        printk("[INFO] Kretprobes correctly removed\n");
+
+        kfree(kprobe_array);
 }
 
 

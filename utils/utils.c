@@ -2,6 +2,7 @@
 #include <crypto/hash.h>
 #include "utils.h"
 #include <linux/string.h>
+#include <linux/device.h>
 
 bool compare_hashes(const char *hash1, const char *hash2, size_t length) {
     return memcmp(hash1, hash2, length) == 0;
@@ -50,4 +51,34 @@ int compute_sha256(const char *data, size_t data_len, char *output) {
     kfree(shash);
     crypto_free_shash(tfm);
     return ret;
+}
+
+char *get_path_name(struct dentry *dentry){
+    char *buff;
+    char *path;
+
+    // Allocate memory for the buffer
+    buff = kmalloc(MAX_PATH_SIZE, GFP_KERNEL);
+    if (!buff) {
+        pr_err("Failed to allocate memory for path buffer\n");
+        return NULL;
+    }
+
+    // Get the path
+    path = dentry_path_raw(dentry, buff, MAX_PATH_SIZE);
+    if (IS_ERR(path)) {
+        pr_err("Error getting dentry path\n");
+        kfree(buff);
+        return NULL;
+    }
+
+    // Allocate memory for the result to return
+    char *res= kmalloc(strlen(path) + 1, GFP_KERNEL);
+    res= strcpy(res, path);
+
+    // Free the buffer
+    kfree(buff);
+    kfree(path);
+
+    return res;
 }

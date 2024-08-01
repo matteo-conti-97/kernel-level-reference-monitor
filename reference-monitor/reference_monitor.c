@@ -368,105 +368,95 @@ func_ptr func_array[(KPROBES_SIZE/2)+1] = {
 //PROBES HANDLERS
 
 int sys_open_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-    struct probe_data *probe_data;
-    struct path path;
-    struct dentry *dentry;
-    struct file *file;
-    char *path_name;
-    int open_flags;
+        char *path_name;
 
+        struct file *file = (struct file *)regs->di;
+        struct path path = file->f_path;
+        struct dentry *dentry = path.dentry;
+        int open_flags = file->f_flags;
 
-    file = (struct file *)regs->di;
-
-    path = file->f_path;
-    dentry = path.dentry;
-    open_flags = file->f_flags;
-
-    // Check file open flags
-    if (open_flags & O_WRONLY || open_flags & O_RDWR || open_flags & O_CREAT || open_flags & O_APPEND || open_flags & O_TRUNC)
-    {
-        path_name = get_path_name(dentry);
-        if (is_blacklisted(path_name) == 1)
-        {
-            printk("%s Blocked access to resource %s", MODNAME, path_name);
-            probe_data = (struct probe_data *)prob_inst->data;
-            return 0;
+        // Check flags
+        if (open_flags & O_WRONLY || open_flags & O_RDWR || open_flags & O_CREAT || open_flags & O_APPEND || open_flags & O_TRUNC){
+                path_name = get_path_name(dentry);
+                if (check_protected_resource(&ref_mon, path_name) == 1){
+                        printk("%s Blocked access to resource %s", MODNAME, path_name);
+                        return 0;
+                }
         }
-    }
 
-    return 1;
+        return 1;
 }
 
 int sys_truncate_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-
+        return 0;
 }
 
 int sys_rename_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-
+return 0;
 }
 
 int sys_mkdir_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-
+return 0;
 }
 
 int sys_mknod_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-
+return 0;
 }
 
 int sys_rmdir_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-
+return 0;
 }
 
 int sys_creat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-
+        return 0;
 }
 
 int sys_link_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-
+        return 0;
 }
 
 int sys_unlink_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-
+        return 0;
 }
 
 int sys_symlink_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-
+        return 0;
 }
 
 int sys_renameat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-
+        return 0;
 }
 
 int sys_unlinkat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-
+        return 0;
 }
 
 int sys_linkat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-
+        return 0;
 }
 
 int sys_symlinkat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-
+        return 0;
 }
 
 int sys_mkdirat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-
+        return 0;
 }
 
 int sys_mknodat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-
+        return 0;
 }
 
 int sys_openat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-
+        return 0;
 }
 
 int sys_renameat2_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-
+        return 0;
 }
 
 int sys_openat2_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-
+        return 0;
 }
 
 //PROBES SETUP AND REGISTRATION

@@ -7,7 +7,7 @@
 typedef struct reference_monitor {
     int state;
     char *hash_passwd;
-    struct protected_resource *protected_resource_list_head;
+    struct protected_resource *protected_resource_list_head; //TODO IMPLEMENT AS RCU
     spinlock_t lock;
 }reference_monitor;
 
@@ -66,4 +66,18 @@ int remove_protected_resource(reference_monitor *ref_mon, char *res_path) {
 
     //If the node to be removed is not found
     return -1;
+}
+
+// Function to check if a resource is protected
+bool check_protected_resource(reference_monitor *ref_mon, char *res_path) {
+    protected_resource *curr = ref_mon->protected_resource_list_head;
+
+    while (curr != NULL) {
+        if (strcmp(curr->path, res_path) == 0) {
+            return true;
+        }
+        curr = curr->next;
+    }
+
+    return false;
 }

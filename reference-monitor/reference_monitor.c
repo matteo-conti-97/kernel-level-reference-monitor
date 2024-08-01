@@ -28,19 +28,23 @@ Threads could also be awaken in non-FIFO order because of Posix signals.
 #include <asm/cacheflush.h>
 #include <asm/apic.h>
 #include <asm/io.h>
+#include <linux/device.h>
 #include <linux/wait.h>
 #include <linux/sched.h>
 #include <linux/syscalls.h>
+#include <linux/kprobes.h>
 #include "lib/include/scth.h"
 #include "reference_monitor.h"
 #include "states.h"
 #include "error_codes.h"
 #include "../utils/utils.h"
+#include "probes.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Matteo Conti <matteo.conti.97@students.uniroma2.eu>");
 
 #define MODNAME "REFERENCE_MONITOR"
+
 
 unsigned long syscall_table_addr = 0x0;
 module_param(syscall_table_addr, ulong, 0660);
@@ -58,6 +62,8 @@ unsigned long new_sys_call_array[] = {0x0, 0x1, 0x2, 0x3}; // please set to sys_
 int restore[HACKED_ENTRIES] = {[0 ...(HACKED_ENTRIES - 1)] - 1};
 
 #define AUDIT if (1)
+
+//SYSTEM CALLS
 
 // Change reference monitor state
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
@@ -306,6 +312,213 @@ long sys_rm_protected_res = (unsigned long)__x64_sys_rm_protected_res;
 long sys_get_protected_res_list = (unsigned long)__x64_sys_get_protected_res_list;
 #else
 #endif
+
+
+//KERNEL PROBES
+
+struct kretprobe kprobe_array[(KPROBES_SIZE/2)+1][2];
+
+char *symbol_names[(KPROBES_SIZE/2)+1][2] = {
+    {"__x64_sys_open", "sys_open"},
+    {"__x64_sys_truncate", "sys_truncate"},
+    {"__x64_sys_rename", "sys_rename"},
+    {"__x64_sys_mkdir", "sys_mkdir"},
+    {"__x64_sys_mknod", "sys_mknod"},
+    {"__x64_sys_rmdir", "sys_rmdir"},
+    {"__x64_sys_creat", "sys_creat"},
+    {"__x64_sys_link", "sys_link"},
+    {"__x64_sys_unlink", "sys_unlink"},
+    {"__x64_sys_symlink", "sys_symlink"},
+    {"__x64_sys_renameat", "sys_renameat"},
+    {"__x64_sys_unlinkat", "sys_unlinkat"},
+    {"__x64_sys_linkat", "sys_linkat"},
+    {"__x64_sys_symlinkat", "sys_symlinkat"},
+    {"__x64_sys_mkdirat", "sys_mkdirat"},
+    {"__x64_sys_mknodat", "sys_mknodat"},
+    {"__x64_sys_openat", "sys_openat"},
+    {"__x64_sys_renameat2", "sys_renameat2"},
+    {"__x64_sys_openat2", NULL}
+};
+
+
+typedef void (*func_ptr)(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
+
+func_ptr func_array[(KPROBES_SIZE/2)+1] = {
+    (func_ptr)sys_open_handler,
+    (func_ptr)sys_truncate_handler,
+    (func_ptr)sys_rename_handler,
+    (func_ptr)sys_mkdir_handler,
+    (func_ptr)sys_mknod_handler,
+    (func_ptr)sys_rmdir_handler,
+    (func_ptr)sys_creat_handler,
+    (func_ptr)sys_link_handler,
+    (func_ptr)sys_unlink_handler,
+    (func_ptr)sys_symlink_handler,
+    (func_ptr)sys_renameat_handler,
+    (func_ptr)sys_unlinkat_handler,
+    (func_ptr)sys_linkat_handler,
+    (func_ptr)sys_symlinkat_handler,
+    (func_ptr)sys_mkdirat_handler,
+    (func_ptr)sys_mknodat_handler,
+    (func_ptr)sys_openat_handler,
+    (func_ptr)sys_renameat2_handler,
+    (func_ptr)sys_openat2_handler
+}; 
+
+//PROBES HANDLERS
+
+int sys_open_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+    struct probe_data *probe_data;
+    struct path path;
+    struct dentry *dentry;
+    struct file *file;
+    char *path_name;
+    int open_flags;
+
+
+    file = (struct file *)regs->di;
+
+    path = file->f_path;
+    dentry = path.dentry;
+    open_flags = file->f_flags;
+
+    // Check file open flags
+    if (open_flags & O_WRONLY || open_flags & O_RDWR || open_flags & O_CREAT || open_flags & O_APPEND || open_flags & O_TRUNC)
+    {
+        path_name = get_path_name(dentry);
+        if (is_blacklisted(path_name) == 1)
+        {
+            printk("%s Blocked access to resource %s", MODNAME, path_name);
+            probe_data = (struct probe_data *)prob_inst->data;
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+int sys_truncate_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+
+}
+
+int sys_rename_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+
+}
+
+int sys_mkdir_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+
+}
+
+int sys_mknod_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+
+}
+
+int sys_rmdir_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+
+}
+
+int sys_creat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+
+}
+
+int sys_link_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+
+}
+
+int sys_unlink_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+
+}
+
+int sys_symlink_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+
+}
+
+int sys_renameat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+
+}
+
+int sys_unlinkat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+
+}
+
+int sys_linkat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+
+}
+
+int sys_symlinkat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+
+}
+
+int sys_mkdirat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+
+}
+
+int sys_mknodat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+
+}
+
+int sys_openat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+
+}
+
+int sys_renameat2_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+
+}
+
+int sys_openat2_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+
+}
+
+//PROBES SETUP AND REGISTRATION
+
+void setup_probe(struct kretprobe *probe, char *symbol, kretprobe_handler_t entry_handler, kretprobe_handler_t ret_handler)
+{
+    probe->kp.symbol_name = symbol;
+    probe->kp.flags = KPROBE_FLAG_DISABLED; //Disabled by default
+    probe->handler = (kretprobe_handler_t)ret_handler;
+    probe->entry_handler = entry_handler;
+    probe->maxactive = -1; // unlimited instances cause it's stateless
+}
+
+int kretprobe_init()
+{
+    int ret;
+    //Setup and register probes
+    for(int i=0;i<(KPROBES_SIZE/2)+1;i+=2)
+    {
+        for (int j=0;j<2;j++){
+            if(symbol_names[i][j] != NULL)
+                setup_probe(&kprobe_array[i][j], symbol_names[i][j], NULL, NULL);
+                ret = register_kretprobe(&kprobe_array[i][j]);
+                if (ret < 0)
+                {
+                    printk("[ERROR] Kretprobe registration failed\n");
+                    return ret;
+                }
+        }
+    }
+    
+    printk("[INFO] Kretprobes correctly installed\n");
+    
+
+    return 0;
+}
+
+void kretprobe_clean()
+{
+    for(int i=0;i<(KPROBES_SIZE/2)+1;i+=2)
+    {
+        for (int j=0;j<2;j++){
+            if(symbol_names[i][j] != NULL)
+                unregister_kretprobe(&kprobe_array[i][j]);
+        }
+    }
+
+    printk("[INFO] Kretprobes correctly removed\n");
+    
+    kfree(kprobe_array);
+}
+
 
 int init_module(void)
 {

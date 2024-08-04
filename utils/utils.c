@@ -3,6 +3,7 @@
 #include "utils.h"
 #include <linux/string.h>
 #include <linux/device.h>
+#include <linux/fs.h>
 
 bool compare_hashes(const char *hash1, const char *hash2, size_t length) {
     return memcmp(hash1, hash2, length) == 0;
@@ -56,6 +57,7 @@ int compute_sha256(const char *data, size_t data_len, char *output) {
 char *get_path_name(struct dentry *dentry){
     char *buff;
     char *path;
+    char *res;
 
     // Allocate memory for the buffer
     buff = kmalloc(MAX_PATH_SIZE, GFP_KERNEL);
@@ -73,7 +75,7 @@ char *get_path_name(struct dentry *dentry){
     }
 
     // Allocate memory for the result to return
-    char *res= kmalloc(strlen(path) + 1, GFP_KERNEL);
+    res= kmalloc(strlen(path) + 1, GFP_KERNEL);
     res= strcpy(res, path);
 
     // Free the buffer

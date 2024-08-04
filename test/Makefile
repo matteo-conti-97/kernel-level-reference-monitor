@@ -1,8 +1,11 @@
 build:
+	gcc insert_resource.c -o insert_resource
+	gcc remove_resource.c -o remove_resource
 	gcc switch_state.c -o switch_state
-	gcc test_all_syscall.c -o test_all_syscall
 	gcc test_insert_remove.c -o test_insert_remove
+	gcc test_open.c -o test_open
 	gcc test_state_transition.c -o test_state_transition
 
+
 clean:
-	rm -f switch_state test_all_syscall test_insert_remove test_state_transition
+	rm -f insert_resource remove_resource switch_state test_insert_remove test_open test_state_transition

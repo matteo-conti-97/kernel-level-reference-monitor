@@ -1,5 +1,0 @@
--1 generic error
--2 operation not permitted
--3 password does not match
--4 resource already protected/resource not protected
--5 invalid state

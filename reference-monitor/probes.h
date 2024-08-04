@@ -1,21 +1,19 @@
-#define KPROBES_SIZE 37
+#define KPROBES_SIZE 10
 
-int sys_open_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
-int sys_truncate_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
-int sys_rename_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
-int sys_mkdir_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
-int sys_mknod_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
-int sys_rmdir_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
-int sys_creat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
-int sys_link_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
-int sys_unlink_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
-int sys_symlink_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
-int sys_renameat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
-int sys_unlinkat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
-int sys_linkat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
-int sys_symlinkat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
-int sys_mkdirat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
-int sys_mknodat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
-int sys_openat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
-int sys_renameat2_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
-int sys_openat2_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
+int vfs_open_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
+int vfs_truncate_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
+int vfs_rename_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
+int vfs_mkdir_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
+int vfs_mknod_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
+int vfs_rmdir_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
+int vfs_create_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
+int vfs_link_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
+int vfs_unlink_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
+int vfs_symlink_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
+
+int ret_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
+
+int enable_probes(void);
+void disable_probes(void);
+int register_probes(void);
+void unregister_probes(void);

@@ -3,8 +3,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include <../reference-monitor/error_codes.h>
-#include <../reference-monitor/states.h>
+#include "../reference-monitor/error_codes.h"
+#include "../reference-monitor/states.h"
 
 int sys_switch = 134;
 

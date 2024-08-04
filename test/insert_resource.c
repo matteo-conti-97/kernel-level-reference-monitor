@@ -3,7 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include <../reference-monitor/error_codes.h>
+#include "../reference-monitor/error_codes.h"
 
 int sys_add = 156;
 
@@ -33,14 +33,19 @@ void check_add(char *path, char *passwd){
 
 int main(int argc, char *argv[]){
     char passwd[128] = "1234";
-    char path[128] = "/home/matteo/ref_mon_test/test_file";
+    char *path;
 
-    if(argc < 2){
-        printf("Usage: %s <num_copies>\n", argv[0]);
+    if(argc < 3){
+        printf("Usage: %s <num_copies> <path>\n", argv[0]);
         return -1;
     }
 
-    int num_copies = atoi(argv[2]);
+    int num_copies = atoi(argv[1]);
+    path = malloc(strlen(argv[2]) + 1);
+    strcpy(path, argv[2]);
+
+    printf("Adding resource %s %d times\n", path, num_copies);
+
     for(int i = 0; i < num_copies; i++)
         check_add(path, passwd);
 

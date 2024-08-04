@@ -45,7 +45,6 @@ MODULE_AUTHOR("Matteo Conti <matteo.conti.97@students.uniroma2.eu>");
 
 #define MODNAME "REFERENCE_MONITOR"
 
-
 unsigned long syscall_table_addr = 0x0;
 module_param(syscall_table_addr, ulong, 0660);
 
@@ -63,7 +62,7 @@ int restore[HACKED_ENTRIES] = {[0 ...(HACKED_ENTRIES - 1)] - 1};
 
 #define AUDIT if (1)
 
-//SYSTEM CALLS
+// SYSTEM CALLS
 
 // Change reference monitor state
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
@@ -75,9 +74,9 @@ asmlinkage long sys_switch_state(int state, char *passwd)
 #endif
         char *hash_passwd;
         int prev_state;
-        printk("%s: switch_state syscall called\n", MODNAME);
+        printk("%s: [INFO] switch_state syscall called\n", MODNAME);
 
-        //Check effective user id to be root
+        // Check effective user id to be root
         if (!uid_eq(current_euid(), GLOBAL_ROOT_UID))
         {
                 printk("%s: [ERROR] only user root can change the reference monitor configuration\n", MODNAME);
@@ -88,13 +87,13 @@ asmlinkage long sys_switch_state(int state, char *passwd)
         hash_passwd = kmalloc(HASH_LEN, GFP_KERNEL);
         if (hash_passwd == NULL)
         {
-                printk("%s: could not allocate memory for password\n", MODNAME);
+                printk("%s: [ERROR] could not allocate memory for password\n", MODNAME);
                 return -ENOMEM;
         }
 
         if (compute_sha256(passwd, strlen(passwd), hash_passwd) < 0)
         {
-                printk("%s: could not compute sha256 of given password\n", MODNAME);
+                printk("%s: [ERROR] could not compute sha256 of given password\n", MODNAME);
                 return GENERIC_ERR;
         }
 
@@ -104,60 +103,58 @@ asmlinkage long sys_switch_state(int state, char *passwd)
                 return PASSWD_MISMATCH_ERR;
         }
 
-        //Switch state
-        switch(state)
+        // Switch state
+        switch (state)
         {
-                case REC_ON:
-                        printk("%s: setting reference monitor state to REC-ON\n", MODNAME);
-                        spin_lock(&ref_mon.lock);
-                        prev_state = ref_mon.state;
-                        ref_mon.state = REC_ON;
-                        spin_unlock(&ref_mon.lock);
+        case REC_ON:
+                printk("%s: [INFO] setting reference monitor state to REC-ON\n", MODNAME);
+                spin_lock(&ref_mon.lock);
+                prev_state = ref_mon.state;
+                ref_mon.state = REC_ON;
+                spin_unlock(&ref_mon.lock);
 
-                        if((prev_state == OFF)||(prev_state == REC_OFF))
-                        {
-                                //TODO Enable kprobes
-                        }
-                        break;
-                case ON:
-                        printk("%s: setting reference monitor state to ON\n", MODNAME);
-                        spin_lock(&ref_mon.lock);
-                        prev_state = ref_mon.state;
-                        ref_mon.state = ON;
-                        spin_unlock(&ref_mon.lock);
+                // If switching from OFF to ON
+                if ((prev_state == OFF) || (prev_state == REC_OFF))
+                        enable_probes();
 
-                        if((prev_state == OFF)||(prev_state == REC_OFF))
-                        {
-                                //TODO Enable kprobes
-                        }
-                        break;
-                case REC_OFF:
-                        printk("%s: setting reference monitor state to REC-OFF\n", MODNAME);
-                        spin_lock(&ref_mon.lock);
-                        prev_state = ref_mon.state;
-                        ref_mon.state = REC_OFF;
-                        spin_unlock(&ref_mon.lock);
+                break;
+        case ON:
+                printk("%s: [INFO] setting reference monitor state to ON\n", MODNAME);
+                spin_lock(&ref_mon.lock);
+                prev_state = ref_mon.state;
+                ref_mon.state = ON;
+                spin_unlock(&ref_mon.lock);
 
-                        if((prev_state == ON)||(prev_state == REC_ON))
-                        {
-                                //TODO Disable kprobes
-                        }
-                        break;
-                case OFF:
-                        printk("%s: setting reference monitor state to OFF\n", MODNAME);
-                        spin_lock(&ref_mon.lock);
-                        prev_state = ref_mon.state;
-                        ref_mon.state = OFF;
-                        spin_unlock(&ref_mon.lock);
+                // If switching from OFF to ON
+                if ((prev_state == OFF) || (prev_state == REC_OFF))
+                        enable_probes();
 
-                        if((prev_state == ON)||(prev_state == REC_ON))
-                        {
-                                //TODO Disable kprobes
-                        }
-                        break;
-                default:
-                        printk("%s: [ERROR] invalid state given\n", MODNAME);
-                        return INVALID_STATE_ERR;
+                break;
+        case REC_OFF:
+                printk("%s: [INFO] setting reference monitor state to REC-OFF\n", MODNAME);
+                spin_lock(&ref_mon.lock);
+                prev_state = ref_mon.state;
+                ref_mon.state = REC_OFF;
+                spin_unlock(&ref_mon.lock);
+
+                // If switching from ON to OFF
+                if ((prev_state == ON) || (prev_state == REC_ON))
+                        disable_probes();
+                break;
+        case OFF:
+                printk("%s: [INFO] setting reference monitor state to OFF\n", MODNAME);
+                spin_lock(&ref_mon.lock);
+                prev_state = ref_mon.state;
+                ref_mon.state = OFF;
+                spin_unlock(&ref_mon.lock);
+
+                // If switching from ON to OFF
+                if ((prev_state == ON) || (prev_state == REC_ON))
+                        disable_probes();
+                break;
+        default:
+                printk("%s: [ERROR] invalid state given\n", MODNAME);
+                return INVALID_STATE_ERR;
         }
 
         return SUCCESS;
@@ -173,15 +170,15 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
 #endif
         char *hash_passwd;
         protected_resource *new_protected_resource;
-        printk("%s: add_protected_res syscall called\n", MODNAME);
+        printk("%s: [INFO] add_protected_res syscall called\n", MODNAME);
 
-        //Check effective user id to be root
+        // Check effective user id to be root
         if (!uid_eq(current_euid(), GLOBAL_ROOT_UID))
         {
                 printk("%s: [ERROR] only user root can change the reference monitor configuration\n", MODNAME);
                 return OP_NOT_PERMITTED_ERR;
         }
-        
+
         // Check password hash
         hash_passwd = kmalloc(HASH_LEN, GFP_KERNEL);
         if (hash_passwd == NULL)
@@ -202,28 +199,28 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
                 return PASSWD_MISMATCH_ERR;
         }
 
-         //Check if reference monitor is in reconfiguration mode
+        // Check if reference monitor is in reconfiguration mode
         if ((ref_mon.state != REC_ON) && (ref_mon.state != REC_OFF))
         {
                 printk("%s: [ERROR] reference monitor is not in reconfiguration mode\n", MODNAME);
                 return OP_NOT_PERMITTED_ERR;
         }
 
-        //Create the new protected resource
+        // Create the new protected resource
         new_protected_resource = create_protected_resource(res_path);
-        if(new_protected_resource == NULL)
+        if (new_protected_resource == NULL)
         {
                 printk("%s: [ERROR] could not create new protected resource\n", MODNAME);
                 return GENERIC_ERR;
         }
 
-        //Lock the reference monitor 
+        // Lock the reference monitor
         spin_lock(&ref_mon.lock);
 
-        //Add the new protected resource to the list
+        // Add the new protected resource to the list
         add_new_protected_resource(&ref_mon, new_protected_resource);
 
-        //Unlock the reference monitor
+        // Unlock the reference monitor
         spin_unlock(&ref_mon.lock);
 
         return SUCCESS;
@@ -239,9 +236,9 @@ asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
 #endif
         int i = 0;
         char *hash_passwd;
-        printk("%s: rm_protected_res syscall called\n", MODNAME);
+        printk("%s: [INFO] rm_protected_res syscall called\n", MODNAME);
 
-        //Check effective user id to be root
+        // Check effective user id to be root
         if (!uid_eq(current_euid(), GLOBAL_ROOT_UID))
         {
                 printk("%s: [ERROR] only user root can change the reference monitor configuration\n", MODNAME);
@@ -268,26 +265,28 @@ asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
                 return PASSWD_MISMATCH_ERR;
         }
 
-        //Check if reference monitor is in reconfiguration mode
+        // Check if reference monitor is in reconfiguration mode
         if ((ref_mon.state != REC_ON) && (ref_mon.state != REC_OFF))
         {
                 printk("%s: [ERROR] reference monitor is not in reconfiguration mode\n", MODNAME);
                 return OP_NOT_PERMITTED_ERR;
         }
 
-        //Lock the reference monitor 
+        // Lock the reference monitor
         spin_lock(&ref_mon.lock);
 
-        while(remove_protected_resource(&ref_mon, res_path) >= 0) i++;
+        while (remove_protected_resource(&ref_mon, res_path) >= 0)
+                i++;
 
-        if(i == 0){
+        if (i == 0)
+        {
                 printk("%s: [ERROR] resource not protected\n", MODNAME);
                 spin_unlock(&ref_mon.lock);
                 return RES_NOT_PROTECTED_ERR;
         }
-        printk("%s: removed protected resource %d times\n", MODNAME, i);
-        
-        //Unlock the reference monitor
+        printk("%s: [INFO] removed protected resource %d times\n", MODNAME, i);
+
+        // Unlock the reference monitor
         spin_unlock(&ref_mon.lock);
 
         return SUCCESS;
@@ -298,10 +297,10 @@ asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
 __SYSCALL_DEFINEx(2, _get_protected_res_list, char **, buff, int *, buff_size)
 {
 #else
-asmlinkage long sys_get_protected_res_list(char **buff, int * buff_size)
+asmlinkage long sys_get_protected_res_list(char **buff, int *buff_size)
 {
 #endif
-    
+
         return SUCCESS;
 }
 
@@ -313,200 +312,211 @@ long sys_get_protected_res_list = (unsigned long)__x64_sys_get_protected_res_lis
 #else
 #endif
 
+// KERNEL PROBES
 
-//KERNEL PROBES
+struct kretprobe kprobe_array[KPROBES_SIZE];
 
-struct kretprobe kprobe_array[(KPROBES_SIZE/2)+1][2];
+char *symbol_names[KPROBES_SIZE] = {
+    "vfs_open",
+    "vfs_truncate",
+    "vfs_rename",
+    "vfs_mkdir",
+    "vfs_mknod",
+    "vfs_rmdir",
+    "vfs_create",
+    "vfs_link",
+    "vfs_unlink",
+    "vfs_symlink"};
 
-char *symbol_names[(KPROBES_SIZE/2)+1][2] = {
-    {"__x64_sys_open", "sys_open"},
-    {"__x64_sys_truncate", "sys_truncate"},
-    {"__x64_sys_rename", "sys_rename"},
-    {"__x64_sys_mkdir", "sys_mkdir"},
-    {"__x64_sys_mknod", "sys_mknod"},
-    {"__x64_sys_rmdir", "sys_rmdir"},
-    {"__x64_sys_creat", "sys_creat"},
-    {"__x64_sys_link", "sys_link"},
-    {"__x64_sys_unlink", "sys_unlink"},
-    {"__x64_sys_symlink", "sys_symlink"},
-    {"__x64_sys_renameat", "sys_renameat"},
-    {"__x64_sys_unlinkat", "sys_unlinkat"},
-    {"__x64_sys_linkat", "sys_linkat"},
-    {"__x64_sys_symlinkat", "sys_symlinkat"},
-    {"__x64_sys_mkdirat", "sys_mkdirat"},
-    {"__x64_sys_mknodat", "sys_mknodat"},
-    {"__x64_sys_openat", "sys_openat"},
-    {"__x64_sys_renameat2", "sys_renameat2"},
-    {"__x64_sys_openat2", NULL}
-};
+typedef int (*kretprobe_handler_t)(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
 
+kretprobe_handler_t handler_array[KPROBES_SIZE] = {
+    (kretprobe_handler_t)vfs_open_handler,
+    (kretprobe_handler_t)vfs_truncate_handler,
+    (kretprobe_handler_t)vfs_rename_handler,
+    (kretprobe_handler_t)vfs_mkdir_handler,
+    (kretprobe_handler_t)vfs_mknod_handler,
+    (kretprobe_handler_t)vfs_rmdir_handler,
+    (kretprobe_handler_t)vfs_create_handler,
+    (kretprobe_handler_t)vfs_link_handler,
+    (kretprobe_handler_t)vfs_unlink_handler,
+    (kretprobe_handler_t)vfs_symlink_handler};
 
-typedef void (*func_ptr)(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
+// PROBES HANDLERS
 
-func_ptr func_array[(KPROBES_SIZE/2)+1] = {
-    (func_ptr)sys_open_handler,
-    (func_ptr)sys_truncate_handler,
-    (func_ptr)sys_rename_handler,
-    (func_ptr)sys_mkdir_handler,
-    (func_ptr)sys_mknod_handler,
-    (func_ptr)sys_rmdir_handler,
-    (func_ptr)sys_creat_handler,
-    (func_ptr)sys_link_handler,
-    (func_ptr)sys_unlink_handler,
-    (func_ptr)sys_symlink_handler,
-    (func_ptr)sys_renameat_handler,
-    (func_ptr)sys_unlinkat_handler,
-    (func_ptr)sys_linkat_handler,
-    (func_ptr)sys_symlinkat_handler,
-    (func_ptr)sys_mkdirat_handler,
-    (func_ptr)sys_mknodat_handler,
-    (func_ptr)sys_openat_handler,
-    (func_ptr)sys_renameat2_handler,
-    (func_ptr)sys_openat2_handler
-}; 
+int vfs_open_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
+{
+        // vfsopen pre handler
+        struct path *path;
+        struct dentry *dentry;
+        struct file *file;
+        char *buff;
+        const char *pathname;
+        int flags;
 
-//PROBES HANDLERS
+        // Get the parameters
+        path = (struct path *)regs->di;
+        file = (struct file *)regs->si;
+        flags = file->f_flags;
+        dentry = path->dentry;
 
-int sys_open_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-        char *path_name;
-
-        struct file *file = (struct file *)regs->di;
-        struct path path = file->f_path;
-        struct dentry *dentry = path.dentry;
-        int open_flags = file->f_flags;
-
-        // Check flags
-        if (open_flags & O_WRONLY || open_flags & O_RDWR || open_flags & O_CREAT || open_flags & O_APPEND || open_flags & O_TRUNC){
-                path_name = get_path_name(dentry);
-                if (check_protected_resource(&ref_mon, path_name) == 1){
-                        printk("%s Blocked access to resource %s", MODNAME, path_name);
-                        return 0;
-                }
+        // Get the path
+        buff = (char *)kmalloc(GFP_KERNEL, MAX_FILENAME_LEN);
+        if (!buff) {
+                printk("%s: [ERROR] could not allocate memory for buffer\n", MODNAME);
+                return -1;
+        }
+        pathname = dentry_path_raw(dentry, buff, MAX_FILENAME_LEN);
+        if (IS_ERR(path)) {
+                printk("%s: [ERROR] could not get path from dentry\n", MODNAME);
+                kfree(buff);
+                return -1;
         }
 
-        return 1;
-}
-
-int sys_truncate_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+        // Check the flags
+        if (flags & O_WRONLY || flags & O_RDWR || flags & O_CREAT || flags & O_APPEND || flags & O_TRUNC)
+        {
+                // Check if file is protected
+                if (check_protected_resource(&ref_mon, pathname))
+                {
+                        printk("%s: [ERROR] Blocked access to protected file %s\n", MODNAME, pathname);
+                        regs->ax = -EACCES; 
+                        return -1;
+                }
+        }
         return 0;
 }
 
-int sys_rename_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-return 0;
-}
-
-int sys_mkdir_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-return 0;
-}
-
-int sys_mknod_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-return 0;
-}
-
-int sys_rmdir_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-return 0;
-}
-
-int sys_creat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+int vfs_truncate_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
+{
         return 0;
 }
 
-int sys_link_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+int vfs_rename_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
+{
         return 0;
 }
 
-int sys_unlink_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+int vfs_mkdir_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
+{
         return 0;
 }
 
-int sys_symlink_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+int vfs_mknod_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
+{
         return 0;
 }
 
-int sys_renameat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+int vfs_rmdir_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
+{
         return 0;
 }
 
-int sys_unlinkat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+int vfs_create_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
+{
         return 0;
 }
 
-int sys_linkat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+int vfs_link_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
+{
         return 0;
 }
 
-int sys_symlinkat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+int vfs_unlink_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
+{
         return 0;
 }
 
-int sys_mkdirat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+int vfs_symlink_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
+{
         return 0;
 }
 
-int sys_mknodat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
+int ret_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+{
         return 0;
 }
 
-int sys_openat_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-        return 0;
-}
-
-int sys_renameat2_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-        return 0;
-}
-
-int sys_openat2_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs){
-        return 0;
-}
-
-//PROBES SETUP AND REGISTRATION
+// PROBES SETUP AND REGISTRATION
 
 void setup_probe(struct kretprobe *probe, char *symbol, kretprobe_handler_t entry_handler, kretprobe_handler_t ret_handler)
 {
-    probe->kp.symbol_name = symbol;
-    probe->kp.flags = KPROBE_FLAG_DISABLED; //Disabled by default
-    probe->handler = (kretprobe_handler_t)ret_handler;
-    probe->entry_handler = entry_handler;
-    probe->maxactive = -1; // unlimited instances cause it's stateless
+        printk("%s: [INFO] Setting up probe for symbol %s\n", MODNAME, symbol);
+        probe->kp.symbol_name = symbol;
+        probe->handler = (kretprobe_handler_t)ret_handler;
+        probe->entry_handler = entry_handler;
+        probe->maxactive = -1; // unlimited instances cause it's stateless
 }
 
-int kretprobe_init(){
-    int ret = 0 , i, j;
-    //Setup and register probes
-    for(i=0;i<(KPROBES_SIZE/2)+1;i+=2)
-    {
-        for (j=0;j<2;j++){
-            if(symbol_names[i][j] != NULL)
-                setup_probe(&kprobe_array[i][j], symbol_names[i][j], NULL, NULL);
-                ret = register_kretprobe(&kprobe_array[i][j]);
-                if (ret < 0)
+int register_probes()
+{
+        int ret = 0, i;
+        // Setup and register probes
+        for (i = 0; i < KPROBES_SIZE; i++)
+        {
+
+                setup_probe(&kprobe_array[i], symbol_names[i], handler_array[i], ret_handler);
+                ret = register_kretprobe(&kprobe_array[i]);
+                if ((ret != 0) && (ret != -EBUSY))
                 {
-                    printk("[ERROR] Kretprobe registration failed\n");
-                    return ret;
+                        printk("%s: [ERROR] Kretprobe registration for symbol %s failed with %d\n", MODNAME, symbol_names[i], ret);
+                        return ret;
                 }
         }
-    }
-    
-    printk("[INFO] Kretprobes correctly installed\n");
 
-    return ret;
+        printk("%s: [INFO] Kretprobes correctly installed\n", MODNAME);
+
+        return ret;
 }
 
-void kretprobe_clean(){
-        int i, j;
-        for(i=0;i<(KPROBES_SIZE/2)+1;i+=2)
+void unregister_probes()
+{
+        int i;
+        for (i = 0; i < KPROBES_SIZE; i++)
         {
-                for (j=0;j<2;j++){
-                        if(symbol_names[i][j] != NULL)
-                                unregister_kretprobe(&kprobe_array[i][j]);
-                }       
+
+                unregister_kretprobe(&kprobe_array[i]);
         }
 
-        printk("[INFO] Kretprobes correctly removed\n");
+        printk("%s: [INFO] Kretprobes correctly removed\n", MODNAME);
 
         kfree(kprobe_array);
 }
 
+int enable_probes()
+{
+        int ret = 0, i;
+        // Setup and register probes
+        for (i = 0; i < KPROBES_SIZE; i++)
+        {
+
+                setup_probe(&kprobe_array[i], symbol_names[i], NULL, NULL);
+                ret = enable_kretprobe(&kprobe_array[i]);
+                if (ret < 0)
+                {
+                        printk("%s: [ERROR] Kretprobe enable for symbol %s  failed\n", MODNAME, symbol_names[i]);
+                        return ret;
+                }
+        }
+
+        printk("%s: [INFO] Kretprobes correctly enabled\n", MODNAME);
+
+        return ret;
+}
+
+void disable_probes()
+{
+        int i;
+        for (i = 0; i < KPROBES_SIZE; i++)
+        {
+
+                disable_kretprobe(&kprobe_array[i]);
+        }
+
+        printk("%s: [INFO] Kretprobes correctly removed\n", MODNAME);
+
+        kfree(kprobe_array);
+}
 
 int init_module(void)
 {
@@ -514,19 +524,19 @@ int init_module(void)
         int i;
         int ret;
 
-        printk("%s: initializing reference monitor state\n", MODNAME);
+        printk("%s: [INFO] initializing reference monitor state\n", MODNAME);
 
         // setup password
         ref_mon.hash_passwd = kmalloc(HASH_LEN, GFP_KERNEL);
         if (ref_mon.hash_passwd == NULL)
         {
-                printk("%s: could not allocate memory for password\n", MODNAME);
+                printk("%s: [ERROR] could not allocate memory for password\n", MODNAME);
                 return -ENOMEM;
         }
 
         if (compute_sha256(passwd, strlen(passwd), ref_mon.hash_passwd) < 0)
         {
-                printk("%s: could not compute sha256 of password\n", MODNAME);
+                printk("%s: [ERROR] could not compute sha256 of password\n", MODNAME);
                 return GENERIC_ERR;
         }
 
@@ -542,9 +552,13 @@ int init_module(void)
         // setup lock
         spin_lock_init(&ref_mon.lock);
 
+        printk("%s: [INFO] Initializing probes\n", MODNAME);
+        register_probes();
+
         if (syscall_table_addr == 0x0)
         {
-                printk("%s: cannot manage sys_call_table address set to 0x0\n", MODNAME);
+                printk("%s: [ERROR] cannot manage sys_call_table address set to 0x0\n", MODNAME);
+                unregister_probes();
                 return GENERIC_ERR;
         }
 
@@ -563,7 +577,8 @@ int init_module(void)
 
         if (ret != HACKED_ENTRIES)
         {
-                printk("%s: could not hack %d entries (just %d)\n", MODNAME, HACKED_ENTRIES, ret);
+                printk("%s: [ERROR] could not hack %d entries (just %d)\n", MODNAME, HACKED_ENTRIES, ret);
+                unregister_probes();
                 return GENERIC_ERR;
         }
 
@@ -576,9 +591,9 @@ int init_module(void)
 
         protect_memory();
 
-        printk("%s: all new system-calls correctly installed on sys-call table\n", MODNAME);
+        printk("%s: [INFO] all new system-calls correctly installed on sys-call table\n", MODNAME);
 
-        printk("%s: reference monitor correctly initialized\n", MODNAME);
+        printk("%s: [INFO] reference monitor correctly initialized\n", MODNAME);
 
         return SUCCESS;
 }
@@ -588,7 +603,7 @@ void cleanup_module(void)
 
         int i;
 
-        printk("%s: shutting down\n", MODNAME);
+        printk("%s: [INFO] shutting down\n", MODNAME);
 
         unprotect_memory();
         for (i = 0; i < HACKED_ENTRIES; i++)
@@ -596,5 +611,6 @@ void cleanup_module(void)
                 ((unsigned long *)syscall_table_addr)[restore[i]] = the_ni_syscall;
         }
         protect_memory();
-        printk("%s: sys-call table restored to its original content\n", MODNAME);
+        printk("%s: [INFO] sys-call table restored to its original content\n", MODNAME);
+        unregister_probes();
 }

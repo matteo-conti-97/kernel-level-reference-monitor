@@ -6,6 +6,7 @@
         "error_codes.h": "c",
         "stack_reference_monitor.h": "c",
         "device.h": "c",
-        "syscalls.h": "c"
+        "syscalls.h": "c",
+        "states.h": "c"
     }
 }

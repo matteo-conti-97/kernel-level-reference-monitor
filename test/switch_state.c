@@ -3,7 +3,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include <../reference-monitor/states.h>
+#include "../reference-monitor/states.h"
+#include "../reference-monitor/error_codes.h"
 
 
 int sys_switch = 134;
@@ -30,5 +31,25 @@ int main(int argc, char *argv[]){
             break;
     }
     syscall(sys_switch, state, passwd);
+    switch(errno){
+        case SUCCESS:
+            printf("Success\n");
+            break;
+        case -GENERIC_ERR:
+            printf("Error: GENERIC_ERR\n");
+            break;
+        case -OP_NOT_PERMITTED_ERR:
+            printf("Error: OP_NOT_PERMITTED_ERR\n");
+            break;
+        case -PASSWD_MISMATCH_ERR:
+            printf("Error: PASSWD_MISMATCH_ERR\n");
+            break;
+        case -RES_NOT_PROTECTED_ERR:
+            printf("Error: RES_NOT_PROTECTED_ERR\n");
+            break;
+        case -INVALID_STATE_ERR:
+            printf("Error: INVALID_STATE_ERR\n");
+            break;
+    }
 	return 0;
 }

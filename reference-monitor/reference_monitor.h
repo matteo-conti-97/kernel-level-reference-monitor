@@ -59,6 +59,7 @@ int remove_protected_resource(reference_monitor *ref_mon, char *res_path) {
             // If the node to be removed is the head node
             if (prev == NULL) 
                 ref_mon->protected_resource_list_head = curr->next;
+            
             // If the node to be removed is not the head node
             else 
                 prev->next = curr->next;

@@ -343,6 +343,11 @@ kretprobe_handler_t handler_array[KPROBES_SIZE] = {
     (kretprobe_handler_t)vfs_symlink_handler};
 
 // PROBES HANDLERS
+int ret_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+{
+        regs->ax = -EACCES;
+        return 0;
+}
 
 int vfs_open_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
 {
@@ -364,13 +369,13 @@ int vfs_open_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
         buff = (char *)kmalloc(GFP_KERNEL, MAX_FILENAME_LEN);
         if (!buff) {
                 printk("%s: [ERROR] could not allocate memory for buffer\n", MODNAME);
-                return -1;
+                return 0;
         }
         pathname = dentry_path_raw(dentry, buff, MAX_FILENAME_LEN);
         if (IS_ERR(path)) {
                 printk("%s: [ERROR] could not get path from dentry\n", MODNAME);
                 kfree(buff);
-                return -1;
+                return 0;
         }
 
         // Check the flags
@@ -380,11 +385,10 @@ int vfs_open_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
                 if (check_protected_resource(&ref_mon, pathname))
                 {
                         printk("%s: [ERROR] Blocked access to protected file %s\n", MODNAME, pathname);
-                        regs->ax = -EACCES; 
-                        return -1;
+                        return 0;
                 }
         }
-        return 0;
+        return 1;
 }
 
 int vfs_truncate_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
@@ -432,10 +436,6 @@ int vfs_symlink_handler(struct kretprobe_instance *prob_inst, struct pt_regs *re
         return 0;
 }
 
-int ret_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
-{
-        return 0;
-}
 
 // PROBES SETUP AND REGISTRATION
 

@@ -40,17 +40,15 @@ int main(int argc, char *argv[]){
     char passwd[128] = "1234";
     char *path;
 
-    if(argc < 3){
+    if(argc < 2){
         printf("Usage: %s <num_copies> <path>\n", argv[0]);
         return -1;
     }
 
-    int num_copies = atoi(argv[1]);
-    path = malloc(strlen(argv[2]) + 1);
+    path = malloc(strlen(argv[1]) + 1);
     strcpy(path, argv[2]);
 
-    for(int i = 0; i < num_copies; i++)
-        check_rm(path, passwd);
+    check_rm(path, passwd);
 
 	return 0;
 }

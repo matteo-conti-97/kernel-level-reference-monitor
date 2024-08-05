@@ -5,7 +5,8 @@ build:
 	gcc test_insert_remove.c -o test_insert_remove
 	gcc test_open.c -o test_open
 	gcc test_state_transition.c -o test_state_transition
+	gcc test_truncate.c -o test_truncate
 
 
 clean:
-	rm -f insert_resource remove_resource switch_state test_insert_remove test_open test_state_transition
+	rm -f insert_resource remove_resource switch_state test_insert_remove test_open test_state_transition test_truncate

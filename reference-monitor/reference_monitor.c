@@ -55,7 +55,7 @@ reference_monitor ref_mon;
 
 unsigned long the_ni_syscall;
 
-unsigned long new_sys_call_array[] = {0x0, 0x1, 0x2, 0x3}; // please set to sys_vtpmo at startup
+unsigned long new_sys_call_array[] = {0x0, 0x1, 0x2}; // please set to sys_vtpmo at startup
 #define HACKED_ENTRIES (int)(sizeof(new_sys_call_array) / sizeof(unsigned long))
 // #define HACKED_ENTRIES 2
 int restore[HACKED_ENTRIES] = {[0 ...(HACKED_ENTRIES - 1)] - 1};
@@ -292,23 +292,11 @@ asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
         return SUCCESS;
 }
 
-// Get the path of all the protected resources by the reference monitor
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
-__SYSCALL_DEFINEx(2, _get_protected_res_list, char **, buff, int *, buff_size)
-{
-#else
-asmlinkage long sys_get_protected_res_list(char **buff, int *buff_size)
-{
-#endif
-
-        return SUCCESS;
-}
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
 long sys_switch_state = (unsigned long)__x64_sys_switch_state;
 long sys_add_protected_res = (unsigned long)__x64_sys_add_protected_res;
 long sys_rm_protected_res = (unsigned long)__x64_sys_rm_protected_res;
-long sys_get_protected_res_list = (unsigned long)__x64_sys_get_protected_res_list;
 #else
 #endif
 
@@ -351,7 +339,6 @@ int ret_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 
 int vfs_open_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
 {
-        // vfsopen pre handler
         struct path *path;
         struct dentry *dentry;
         struct file *file;
@@ -359,13 +346,13 @@ int vfs_open_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
         const char *pathname;
         int flags;
 
-        // Get the parameters
+        // Get open parameters
         path = (struct path *)regs->di;
         file = (struct file *)regs->si;
         flags = file->f_flags;
         dentry = path->dentry;
 
-        // Get the path
+        // Get the file path
         buff = (char *)kmalloc(GFP_KERNEL, MAX_FILENAME_LEN);
         if (!buff) {
                 printk("%s: [ERROR] could not allocate memory for buffer\n", MODNAME);
@@ -393,47 +380,77 @@ int vfs_open_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
 
 int vfs_truncate_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
 {
-        return 0;
+        struct path *path;
+        struct dentry *dentry;
+        char *buff;
+        const char *pathname;
+
+        // Get open parameters
+        path = (struct path *)regs->di;
+        dentry = path->dentry;
+
+        // Get the file path
+        buff = (char *)kmalloc(GFP_KERNEL, MAX_FILENAME_LEN);
+        if (!buff) {
+                printk("%s: [ERROR] could not allocate memory for buffer\n", MODNAME);
+                return 0;
+        }
+        pathname = dentry_path_raw(dentry, buff, MAX_FILENAME_LEN);
+        if (IS_ERR(path)) {
+                printk("%s: [ERROR] could not get path from dentry\n", MODNAME);
+                kfree(buff);
+                return 0;
+        }
+
+ 
+        // Check if file is protected
+        if (check_protected_resource(&ref_mon, pathname))
+        {
+                printk("%s: [ERROR] Blocked access to protected file %s\n", MODNAME, pathname);
+                return 0;
+        }
+        
+        return 1;
 }
 
 int vfs_rename_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
 {
-        return 0;
+        return 1;
 }
 
 int vfs_mkdir_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
 {
-        return 0;
+        return 1;
 }
 
 int vfs_mknod_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
 {
-        return 0;
+        return 1;
 }
 
 int vfs_rmdir_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
 {
-        return 0;
+        return 1;
 }
 
 int vfs_create_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
 {
-        return 0;
+        return 1;
 }
 
 int vfs_link_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
 {
-        return 0;
+        return 1;
 }
 
 int vfs_unlink_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
 {
-        return 0;
+        return 1;
 }
 
 int vfs_symlink_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
 {
-        return 0;
+        return 1;
 }
 
 
@@ -571,7 +588,6 @@ int init_module(void)
         new_sys_call_array[0] = (unsigned long)sys_switch_state;
         new_sys_call_array[1] = (unsigned long)sys_add_protected_res;
         new_sys_call_array[2] = (unsigned long)sys_rm_protected_res;
-        new_sys_call_array[3] = (unsigned long)sys_get_protected_res_list;
 
         ret = get_entries(restore, HACKED_ENTRIES, (unsigned long *)syscall_table_addr, &the_ni_syscall);
 

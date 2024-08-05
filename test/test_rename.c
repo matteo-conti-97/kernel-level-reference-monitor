@@ -1,17 +1,17 @@
 #include <stdio.h>
-#include <fcntl.h>
+#include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <string.h>
-
-#define TARGET_FILE "/home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova.txt"
+#include <sys/stat.h>
 
 int main() {
-    ssize_t bytes_written;
-    char *test_data = "Test data\n";
+    const char *old_filename = "/home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova.txt";
+    const char *new_filename = "/home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova_rename.txt";
 
-    // Attempt to open the file in write mode
-    if (open(TARGET_FILE, O_WRONLY | O_CREAT | O_TRUNC, 0644) == -1) {
+    //Rename the file
+    if (rename(old_filename, new_filename) == -1) {
         switch(errno){
             case EACCES:
                 printf("%s\n", strerror(errno));
@@ -22,6 +22,5 @@ int main() {
         }
         return 1;
     }
-    
     return 0;
 }

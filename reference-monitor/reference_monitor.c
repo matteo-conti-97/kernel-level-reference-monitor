@@ -331,6 +331,15 @@ kretprobe_handler_t handler_array[KPROBES_SIZE] = {
     (kretprobe_handler_t)vfs_symlink_handler};
 
 // PROBES HANDLERS
+/* Note Registers Used for Passing Arguments:
+rdi: First argument
+rsi: Second argument
+rdx: Third argument
+r10: Fourth argument (note: r10 is used instead of rcx)
+r8: Fifth argument
+r9: Sixth argument
+rax: Used for returning the result of the system call*/
+
 int ret_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
         regs->ax = -EACCES;
@@ -359,7 +368,7 @@ int vfs_open_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
                 return 0;
         }
         pathname = dentry_path_raw(dentry, buff, MAX_FILENAME_LEN);
-        if (IS_ERR(path)) {
+        if (IS_ERR(pathname)) {
                 printk("%s: [ERROR] could not get path from dentry\n", MODNAME);
                 kfree(buff);
                 return 0;
@@ -385,7 +394,7 @@ int vfs_truncate_handler(struct kretprobe_instance *prob_inst, struct pt_regs *r
         char *buff;
         const char *pathname;
 
-        // Get open parameters
+        // Get truncate parameters
         path = (struct path *)regs->di;
         dentry = path->dentry;
 
@@ -396,7 +405,7 @@ int vfs_truncate_handler(struct kretprobe_instance *prob_inst, struct pt_regs *r
                 return 0;
         }
         pathname = dentry_path_raw(dentry, buff, MAX_FILENAME_LEN);
-        if (IS_ERR(path)) {
+        if (IS_ERR(pathname)) {
                 printk("%s: [ERROR] could not get path from dentry\n", MODNAME);
                 kfree(buff);
                 return 0;
@@ -415,6 +424,33 @@ int vfs_truncate_handler(struct kretprobe_instance *prob_inst, struct pt_regs *r
 
 int vfs_rename_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
 {
+        char *buff;
+        const char *pathname;
+        
+        //Get rename parameters
+        struct dentry *old_dentry = (struct dentry *)regs->si;
+
+        // Get the file path
+        buff = (char *)kmalloc(GFP_KERNEL, MAX_FILENAME_LEN);
+        if (!buff) {
+                printk("%s: [ERROR] could not allocate memory for buffer\n", MODNAME);
+                return 0;
+        }
+        pathname = dentry_path_raw(old_dentry, buff, MAX_FILENAME_LEN);
+        if (IS_ERR(pathname)) {
+                printk("%s: [ERROR] could not get path from dentry\n", MODNAME);
+                kfree(buff);
+                return 0;
+        }
+
+ 
+        // Check if file is protected
+        if (check_protected_resource(&ref_mon, pathname))
+        {
+                printk("%s: [ERROR] Blocked access to protected file %s\n", MODNAME, pathname);
+                return 0;
+        }
+
         return 1;
 }
 

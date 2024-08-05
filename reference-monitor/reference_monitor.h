@@ -46,7 +46,6 @@ void add_new_protected_resource(reference_monitor *ref_mon, protected_resource *
     //Insert the new protected resource at the beginning of the list
     new_protected_resource->next = ref_mon->protected_resource_list_head;
     ref_mon->protected_resource_list_head = new_protected_resource;
-    print_protected_resources(ref_mon);
 }
 
 // Function to remove a node from the list
@@ -66,14 +65,12 @@ int remove_protected_resource(reference_monitor *ref_mon, char *res_path) {
 
             kfree(curr->path);
             kfree(curr);
-            print_protected_resources(ref_mon);
             return 0;
         }
         prev = curr;
         curr = curr->next;
     }
 
-    print_protected_resources(ref_mon);
     //If the node to be removed is not found
     return -1;
 }

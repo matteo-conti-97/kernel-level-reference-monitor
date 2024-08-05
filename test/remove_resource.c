@@ -41,12 +41,12 @@ int main(int argc, char *argv[]){
     char *path;
 
     if(argc < 2){
-        printf("Usage: %s <num_copies> <path>\n", argv[0]);
+        printf("Usage: %s <path>\n", argv[0]);
         return -1;
     }
 
     path = malloc(strlen(argv[1]) + 1);
-    strcpy(path, argv[2]);
+    strcpy(path, argv[1]);
 
     check_rm(path, passwd);
 

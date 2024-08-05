@@ -223,6 +223,8 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
         // Unlock the reference monitor
         spin_unlock(&ref_mon.lock);
 
+        print_protected_resources(&ref_mon);
+
         return SUCCESS;
 }
 
@@ -288,6 +290,8 @@ asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
 
         // Unlock the reference monitor
         spin_unlock(&ref_mon.lock);
+
+        print_protected_resources(&ref_mon);
 
         return SUCCESS;
 }
@@ -380,7 +384,7 @@ int vfs_open_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
                 // Check if file is protected
                 if (check_protected_resource(&ref_mon, pathname))
                 {
-                        printk("%s: [ERROR] Blocked access to protected file %s\n", MODNAME, pathname);
+                        printk("%s: [ERROR] Blocked open access to protected file %s\n", MODNAME, pathname);
                         return 0;
                 }
         }
@@ -415,7 +419,7 @@ int vfs_truncate_handler(struct kretprobe_instance *prob_inst, struct pt_regs *r
         // Check if file is protected
         if (check_protected_resource(&ref_mon, pathname))
         {
-                printk("%s: [ERROR] Blocked access to protected file %s\n", MODNAME, pathname);
+                printk("%s: [ERROR] Blocked truncate access to protected file %s\n", MODNAME, pathname);
                 return 0;
         }
         
@@ -447,7 +451,7 @@ int vfs_rename_handler(struct kretprobe_instance *prob_inst, struct pt_regs *reg
         // Check if file is protected
         if (check_protected_resource(&ref_mon, pathname))
         {
-                printk("%s: [ERROR] Blocked access to protected file %s\n", MODNAME, pathname);
+                printk("%s: [ERROR] Blocked rename access to protected file %s\n", MODNAME, pathname);
                 return 0;
         }
 

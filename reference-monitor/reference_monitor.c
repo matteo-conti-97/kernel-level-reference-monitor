@@ -344,6 +344,15 @@ r8: Fifth argument
 r9: Sixth argument
 rax: Used for returning the result of the system call*/
 
+/* Note Registers Used for Passing Arguments:
+rdi: First argument
+rsi: Second argument
+rdx: Third argument
+r10: Fourth argument (note: r10 is used instead of rcx)
+r8: Fifth argument
+r9: Sixth argument
+rax: Used for returning the result of the system call*/
+
 int ret_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
         regs->ax = -EACCES;
@@ -373,6 +382,7 @@ int vfs_open_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
         }
         pathname = dentry_path_raw(dentry, buff, MAX_FILENAME_LEN);
         if (IS_ERR(pathname)) {
+        if (IS_ERR(pathname)) {
                 printk("%s: [ERROR] could not get path from dentry\n", MODNAME);
                 kfree(buff);
                 return 0;
@@ -399,6 +409,7 @@ int vfs_truncate_handler(struct kretprobe_instance *prob_inst, struct pt_regs *r
         const char *pathname;
 
         // Get truncate parameters
+        // Get truncate parameters
         path = (struct path *)regs->di;
         dentry = path->dentry;
 
@@ -409,6 +420,7 @@ int vfs_truncate_handler(struct kretprobe_instance *prob_inst, struct pt_regs *r
                 return 0;
         }
         pathname = dentry_path_raw(dentry, buff, MAX_FILENAME_LEN);
+        if (IS_ERR(pathname)) {
         if (IS_ERR(pathname)) {
                 printk("%s: [ERROR] could not get path from dentry\n", MODNAME);
                 kfree(buff);

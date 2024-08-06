@@ -11,7 +11,7 @@ int main() {
     char *test_data = "Test data\n";
     int fd;
 
-    fd = open(TARGET_FILE, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    int fd = open(TARGET_FILE, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     // Attempt to open the file in write mode
     if (fd == -1) {
         switch(errno){
@@ -28,8 +28,16 @@ int main() {
     // Write the test data to the file
     bytes_written = write(fd, test_data, strlen(test_data));
     if (bytes_written == -1) {
-        printf("Error -> %s\n", strerror(errno));
+        switch(errno){
+            case EACCES:
+                printf("%s\n", strerror(errno));
+                break;
+            default:
+                printf("Error -> %s\n", strerror(errno));
+                break;
+        }
         return 1;
     }
+    
     return 0;
 }

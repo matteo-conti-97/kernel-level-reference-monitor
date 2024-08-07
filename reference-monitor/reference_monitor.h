@@ -86,10 +86,12 @@ void print_protected_resources(reference_monitor *ref_mon) {
 
 // Function to check if a resource is protected
 bool check_protected_resource(reference_monitor *ref_mon, const char *res_path) {
+    int prefix_len;
     protected_resource *curr = ref_mon->protected_resource_list_head;
     while (curr != NULL) {
+        prefix_len = strlen(curr->path);
         //If the resource is found in the list
-        if (strcmp(curr->path, res_path) == 0) {
+        if (strncmp(res_path, curr->path, prefix_len) == 0) {
             return true;
         }
         curr = curr->next;

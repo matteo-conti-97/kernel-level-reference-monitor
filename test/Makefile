@@ -7,6 +7,8 @@ build:
 	gcc test_state_transition.c -o test_state_transition
 	gcc test_truncate.c -o test_truncate
 	gcc test_rename.c -o test_rename
+	gcc test_mkdir.c -o test_mkdir
+	gcc test_rmdir.c -o test_rmdir
 
 clean:
-	rm -f insert_resource remove_resource switch_state test_insert_remove test_open test_state_transition test_truncate test_rename
+	rm -f insert_resource remove_resource switch_state test_insert_remove test_open test_state_transition test_truncate test_rename test_mkdir test_rmdir

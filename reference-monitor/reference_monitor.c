@@ -219,6 +219,7 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
 
         // Add the new protected resource to the list
         add_new_protected_resource(&ref_mon, new_protected_resource);
+        print_protected_resources(&ref_mon);
 
         // Unlock the reference monitor
         spin_unlock(&ref_mon.lock);
@@ -285,6 +286,7 @@ asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
                 return RES_NOT_PROTECTED_ERR;
         }
         printk("%s: [INFO] removed protected resource %d times\n", MODNAME, i);
+        print_protected_resources(&ref_mon);
 
         // Unlock the reference monitor
         spin_unlock(&ref_mon.lock);
@@ -308,9 +310,9 @@ char *symbol_names[KPROBES_SIZE] = {
     "vfs_open",
     "security_path_truncate",
     "security_path_rename",
-    "vfs_mkdir",
+    "security_inode_mkdir",
     "vfs_mknod",
-    "vfs_rmdir",
+    "security_inode_rmdir",
     "vfs_create",
     "vfs_link",
     "vfs_unlink",
@@ -322,9 +324,9 @@ kretprobe_handler_t handler_array[KPROBES_SIZE] = {
     (kretprobe_handler_t)vfs_open_handler,
     (kretprobe_handler_t)security_path_truncate_handler,
     (kretprobe_handler_t)security_path_rename_handler,
-    (kretprobe_handler_t)vfs_mkdir_handler,
+    (kretprobe_handler_t)security_inode_mkdir_handler,
     (kretprobe_handler_t)vfs_mknod_handler,
-    (kretprobe_handler_t)vfs_rmdir_handler,
+    (kretprobe_handler_t)security_inode_rmdir_handler,
     (kretprobe_handler_t)vfs_create_handler,
     (kretprobe_handler_t)vfs_link_handler,
     (kretprobe_handler_t)vfs_unlink_handler,
@@ -425,14 +427,10 @@ int security_path_truncate_handler(struct kretprobe_instance *prob_inst, struct 
 
 int security_path_rename_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
 {
-        //struct path *old_path;
         struct dentry *dentry;
         char *buff;
         const char *pathname;
 
-        // Get truncate parameters
-        //old_path = (struct path *)regs->di;
-        //dentry = old_path->dentry;
         dentry = (struct dentry *)regs->si;
         
 
@@ -460,8 +458,36 @@ int security_path_rename_handler(struct kretprobe_instance *prob_inst, struct pt
         return 1;
 }
 
-int vfs_mkdir_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
+int security_inode_mkdir_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
 {
+        struct dentry *dentry;
+        char *buff;
+        const char *pathname;
+
+        dentry = (struct dentry *)regs->si;
+        
+
+        // Get the dir path
+        buff = (char *)kmalloc(GFP_KERNEL, MAX_FILENAME_LEN);
+        if (!buff) {
+                printk("%s: [ERROR] could not allocate memory for buffer\n", MODNAME);
+                return 0;
+        }
+        pathname = dentry_path_raw(dentry, buff, MAX_FILENAME_LEN);
+        if (IS_ERR(pathname)) {
+                printk("%s: [ERROR] could not get path from dentry\n", MODNAME);
+                kfree(buff);
+                return 0;
+        }
+
+        printk("%s: [INFO] mkdir called for %s\n", MODNAME, pathname);
+        // Check if file is protected
+        if (check_protected_resource(&ref_mon, pathname))
+        {
+                printk("%s: [ERROR] Blocked mkdir access to protected file %s\n", MODNAME, pathname);
+                return 0;
+        }
+        
         return 1;
 }
 
@@ -470,8 +496,36 @@ int vfs_mknod_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs
         return 1;
 }
 
-int vfs_rmdir_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
+int security_inode_rmdir_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
 {
+        struct dentry *dentry;
+        char *buff;
+        const char *pathname;
+
+        dentry = (struct dentry *)regs->si;
+        
+
+        // Get the dir path
+        buff = (char *)kmalloc(GFP_KERNEL, MAX_FILENAME_LEN);
+        if (!buff) {
+                printk("%s: [ERROR] could not allocate memory for buffer\n", MODNAME);
+                return 0;
+        }
+        pathname = dentry_path_raw(dentry, buff, MAX_FILENAME_LEN);
+        if (IS_ERR(pathname)) {
+                printk("%s: [ERROR] could not get path from dentry\n", MODNAME);
+                kfree(buff);
+                return 0;
+        }
+
+        printk("%s: [INFO] mkdir called for %s\n", MODNAME, pathname);
+        // Check if file is protected
+        if (check_protected_resource(&ref_mon, pathname))
+        {
+                printk("%s: [ERROR] Blocked rmdir access to protected file %s\n", MODNAME, pathname);
+                return 0;
+        }
+        
         return 1;
 }
 

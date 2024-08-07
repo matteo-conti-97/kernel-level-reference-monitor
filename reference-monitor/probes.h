@@ -1,8 +1,8 @@
 #define KPROBES_SIZE 10
 
 int vfs_open_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
-int vfs_truncate_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
-int vfs_rename_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
+int security_path_truncate_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
+int security_path_rename_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
 int vfs_mkdir_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
 int vfs_mknod_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
 int vfs_rmdir_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs);

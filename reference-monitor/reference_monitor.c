@@ -306,8 +306,8 @@ struct kretprobe kprobe_array[KPROBES_SIZE];
 
 char *symbol_names[KPROBES_SIZE] = {
     "vfs_open",
-    "vfs_truncate",
-    "vfs_rename",
+    "security_path_truncate",
+    "security_path_rename",
     "vfs_mkdir",
     "vfs_mknod",
     "vfs_rmdir",
@@ -320,8 +320,8 @@ typedef int (*kretprobe_handler_t)(struct kretprobe_instance *prob_inst, struct 
 
 kretprobe_handler_t handler_array[KPROBES_SIZE] = {
     (kretprobe_handler_t)vfs_open_handler,
-    (kretprobe_handler_t)vfs_truncate_handler,
-    (kretprobe_handler_t)vfs_rename_handler,
+    (kretprobe_handler_t)security_path_truncate_handler,
+    (kretprobe_handler_t)security_path_rename_handler,
     (kretprobe_handler_t)vfs_mkdir_handler,
     (kretprobe_handler_t)vfs_mknod_handler,
     (kretprobe_handler_t)vfs_rmdir_handler,
@@ -387,7 +387,7 @@ int vfs_open_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
         return 1;
 }
 
-int vfs_truncate_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
+int security_path_truncate_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
 {
         struct path *path;
         struct dentry *dentry;
@@ -397,6 +397,7 @@ int vfs_truncate_handler(struct kretprobe_instance *prob_inst, struct pt_regs *r
         // Get truncate parameters
         path = (struct path *)regs->di;
         dentry = path->dentry;
+        
 
         // Get the file path
         buff = (char *)kmalloc(GFP_KERNEL, MAX_FILENAME_LEN);
@@ -422,13 +423,18 @@ int vfs_truncate_handler(struct kretprobe_instance *prob_inst, struct pt_regs *r
         return 1;
 }
 
-int vfs_rename_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
+int security_path_rename_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
 {
+        //struct path *old_path;
+        struct dentry *dentry;
         char *buff;
         const char *pathname;
+
+        // Get truncate parameters
+        //old_path = (struct path *)regs->di;
+        //dentry = old_path->dentry;
+        dentry = (struct dentry *)regs->si;
         
-        //Get rename parameters
-        struct dentry *old_dentry = (struct dentry *)regs->si;
 
         // Get the file path
         buff = (char *)kmalloc(GFP_KERNEL, MAX_FILENAME_LEN);
@@ -436,7 +442,7 @@ int vfs_rename_handler(struct kretprobe_instance *prob_inst, struct pt_regs *reg
                 printk("%s: [ERROR] could not allocate memory for buffer\n", MODNAME);
                 return 0;
         }
-        pathname = dentry_path_raw(old_dentry, buff, MAX_FILENAME_LEN);
+        pathname = dentry_path_raw(dentry, buff, MAX_FILENAME_LEN);
         if (IS_ERR(pathname)) {
                 printk("%s: [ERROR] could not get path from dentry\n", MODNAME);
                 kfree(buff);
@@ -447,10 +453,10 @@ int vfs_rename_handler(struct kretprobe_instance *prob_inst, struct pt_regs *reg
         // Check if file is protected
         if (check_protected_resource(&ref_mon, pathname))
         {
-                printk("%s: [ERROR] Blocked rename access to protected file %s\n", MODNAME, pathname);
+                printk("%s: [ERROR] Blocked truncate access to protected file %s\n", MODNAME, pathname);
                 return 0;
         }
-
+        
         return 1;
 }
 
@@ -491,7 +497,6 @@ int vfs_symlink_handler(struct kretprobe_instance *prob_inst, struct pt_regs *re
 
 
 // PROBES SETUP AND REGISTRATION
-
 void setup_probe(struct kretprobe *probe, char *symbol, kretprobe_handler_t entry_handler, kretprobe_handler_t ret_handler)
 {
         printk("%s: [INFO] Setting up probe for symbol %s\n", MODNAME, symbol);

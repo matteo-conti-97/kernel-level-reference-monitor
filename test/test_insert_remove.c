@@ -75,19 +75,19 @@ int main(int argc, char *argv[]){
 
     //Call add with correct parameters
     printf("Calling sys_add\n");
-    check_add(path, passwd);
+    check_add(res_path, passwd);
 
     //Call add with same parameter to insert to copies
     printf("Calling sys_add again\n");
-    check_add(path, passwd);
+    check_add(res_path, passwd);
 
     //Call rm with correct parameters
     printf("Calling sys_rm\n");
-    check_rm(path, passwd);
+    check_rm(res_path, passwd);
 
     //Call rm again expected to receive RES_NOT_PROTECTED_ERR
     printf("Calling sys_rm again\n");
-    check_rm(path, passwd);
+    check_rm(res_path, passwd);
 
 	return 0;
 }

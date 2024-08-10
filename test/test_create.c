@@ -3,8 +3,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
-
-
+#include <stdlib.h>
 
 int main(int argc, char *argv[]){
     ssize_t bytes_written;

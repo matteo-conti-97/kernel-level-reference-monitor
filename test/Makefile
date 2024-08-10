@@ -9,6 +9,11 @@ build:
 	gcc test_rename.c -o test_rename
 	gcc test_mkdir.c -o test_mkdir
 	gcc test_rmdir.c -o test_rmdir
+	gcc test_mknod.c -o test_mknod
+	gcc test_create.c -o test_create
+	gcc test_link.c -o test_link
+	gcc test_symlink.c -o test_symlink
+	gcc test_unlink.c -o test_unlink
 
 clean:
-	rm -f insert_resource remove_resource switch_state test_insert_remove test_open test_state_transition test_truncate test_rename test_mkdir test_rmdir
+	rm -f insert_resource remove_resource switch_state test_insert_remove test_open test_state_transition test_truncate test_rename test_mkdir test_rmdir test_mknod test_create test_symlink test_link test_unlink 

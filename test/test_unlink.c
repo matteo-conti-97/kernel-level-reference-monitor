@@ -1,17 +1,14 @@
 #include <stdio.h>
-#include <sys/stat.h>
+#include <unistd.h>
 #include <errno.h>
 #include <string.h>
-#include <unistd.h>
 
-#define TARGET_DIR "/home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova_dir"
+#define TARGET_LINK "/home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova_dir/test_unlink.txt"
 
 int main(int argc, char *argv[]) {
 
-
-    // Attempt to create the directory
-    int res = rmdir(TARGET_DIR);
-
+    // Attempt to unlink the file
+    int res = unlink(TARGET_LINK);
     if (res == -1) {
         switch(errno){
             case EACCES:
@@ -22,6 +19,7 @@ int main(int argc, char *argv[]) {
                 return -1;
         }
     }
-    printf("Directory '%s' removed successfully.\n", TARGET_DIR);
+    printf("File unlinked\n");
+
     return 0;
 }

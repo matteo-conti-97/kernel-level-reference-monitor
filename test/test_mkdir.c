@@ -3,7 +3,7 @@
 #include <errno.h>
 #include <string.h>
 
-#define TARGET_DIR "/home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova_dir"
+#define TARGET_DIR "/home/matteo/Desktop/kernel-level-reference-monitor/test/files/test_mkdir"
 
 int main(int argc, char *argv[]) {
 
@@ -15,12 +15,13 @@ int main(int argc, char *argv[]) {
         switch(errno){
             case EACCES:
                 printf("%s\n", strerror(errno));
-                break;
+                return -1;
             default:
                 printf("Error -> %s\n", strerror(errno));
-                break;
+                return -1;
         }
     }
+    printf("Directory '%s' created successfully.\n", TARGET_DIR);
 
     return 0;
 }

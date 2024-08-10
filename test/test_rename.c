@@ -6,9 +6,20 @@
 #include <string.h>
 #include <sys/stat.h>
 
-int main() {
-    const char *old_filename = "/home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova.txt";
-    const char *new_filename = "/home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova_dir/test_rename.txt";
+int main(int argc, char *argv[]) {
+    char *old_filename;
+    char *new_filename;
+
+    // Get target file from parameters
+    if (argc < 3) {
+        printf("Usage: %s <old_filename> <new_filename>\n", argv[0]);
+        return -1;
+    }
+    old_filename = (char *)malloc(strlen(argv[1]) + 1);
+    strcpy(old_filename, argv[1]);
+    new_filename = (char *)malloc(strlen(argv[2]) + 1);
+    strcpy(new_filename, argv[2]);
+
     int res = rename(old_filename, new_filename);
     //Rename the file
     if (res == -1) {

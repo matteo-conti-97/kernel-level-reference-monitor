@@ -60,8 +60,18 @@ void check_rm(char *path, char *passwd){
 }
 
 int main(int argc, char *argv[]){
-    char passwd[128] = "1234";
-    char path[128] = "/home/matteo/ref_mon_test/test_file";
+    char *passwd;
+    char *res_path;
+
+    //Get password and res_path from parameters
+    if(argc < 3){
+        printf("Usage: %s <res_path> <password>\n", argv[0]);
+        return -1;
+    }
+    res_path = (char *)malloc(strlen(argv[1]) + 1);
+    strcpy(res_path, argv[1]);
+    passwd = (char *)malloc(strlen(argv[2]) + 1);
+    strcpy(passwd, argv[2]);
 
     //Call add with correct parameters
     printf("Calling sys_add\n");

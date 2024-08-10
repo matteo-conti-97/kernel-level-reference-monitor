@@ -4,13 +4,22 @@
 #include <errno.h>
 #include <string.h>
 
-#define TARGET_FILE "/home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova.txt"
 
-int main() {
+int main(int argc, char *argv[]) {
     ssize_t bytes_written;
     char *test_data = "Test data\n";
+    char *target_file;
 
-    int fd = open(TARGET_FILE, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    //Get file path from parameters
+    if(argc < 2){
+        printf("Usage: %s <file_path>\n", argv[0]);
+        return -1;
+    }
+    target_file = (char *) malloc(strlen(argv[1]) + 1);
+    strcpy(target_file, argv[1]);
+
+
+    int fd = open(target_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     // Attempt to open the file in write mode
     if (fd == -1) {
         switch(errno){
@@ -23,7 +32,7 @@ int main() {
         }
     }
 
-    printf("File '%s' opened successfully.\n", TARGET_FILE);
+    printf("File '%s' opened successfully.\n", target_file);
     
     // Write the test data to the file
     bytes_written = write(fd, test_data, strlen(test_data));
@@ -38,7 +47,7 @@ int main() {
         }
     }
 
-    printf("Data written to file '%s'.\n", TARGET_FILE);
+    printf("Data written to file '%s'.\n", target_file);
     
     return 0;
 }

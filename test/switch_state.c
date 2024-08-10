@@ -11,8 +11,18 @@ int sys_switch = 134;
 
 
 int main(int argc, char *argv[]){
-    char passwd[128] = "1234";
-    int state = atoi(argv[1]);
+    char *passwd;
+    int state;
+
+    //Get password and state from parameters
+    if(argc < 3){
+        printf("Usage: %s <state> <password>\n", argv[0]);
+        return -1;
+    }
+    state = atoi(argv[1]);
+    passwd = (char *)malloc(strlen(argv[2]) + 1);
+    strcpy(passwd, argv[2]);
+    
     switch(state){
         case ON:
             printf("Switching to ON\n");

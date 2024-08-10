@@ -3,13 +3,22 @@
 #include <errno.h>
 #include <string.h>
 
-#define TARGET_FILE "/home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova.txt"
-#define TARGET_LINK "/home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova_dir/test_symlink.txt"
-
 int main(int argc, char *argv[]) {
+    char *target_file;
+    char *target_link;
+
+    // Get target file from parameters
+    if (argc < 3) {
+        printf("Usage: %s <file> <link>\n", argv[0]);
+        return -1;
+    }
+    target_file = (char *)malloc(strlen(argv[1]) + 1);
+    strcpy(target_file, argv[1]);
+    target_link = (char *)malloc(strlen(argv[2]) + 1);
+    strcpy(target_link, argv[2]);
 
     // Create the symbolic link
-    int res = symlink(TARGET_FILE, TARGET_LINK);
+    int res = symlink(target_file, target_link);
     if (res == -1) {
         switch(errno){
             case EACCES:

@@ -4,13 +4,19 @@
 #include <string.h>
 #include <unistd.h>
 
-#define TARGET_DIR "/home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova_dir"
-
 int main(int argc, char *argv[]) {
+    char *target_dir;
 
+    // Get target file from parameters
+    if (argc < 2) {
+        printf("Usage: %s <dir>\n", argv[0]);
+        return -1;
+    }
+    target_dir = (char *)malloc(strlen(argv[1]) + 1);
+    strcpy(target_dir, argv[1]);
 
     // Attempt to create the directory
-    int res = rmdir(TARGET_DIR);
+    int res = rmdir(target_dir);
 
     if (res == -1) {
         switch(errno){
@@ -22,6 +28,6 @@ int main(int argc, char *argv[]) {
                 return -1;
         }
     }
-    printf("Directory '%s' removed successfully.\n", TARGET_DIR);
+    printf("Directory '%s' removed successfully.\n", target_dir);
     return 0;
 }

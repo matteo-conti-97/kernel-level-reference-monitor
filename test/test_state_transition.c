@@ -33,7 +33,16 @@ int check_switch(int state, char *passwd){
 }
 
 int main(int argc, char *argv[]){
-    char passwd[128] = "1234";
+    char *passwd;
+
+    //Get password from parameters
+    if(argc < 2){
+        printf("Usage: %s <password>\n", argv[0]);
+        return -1;
+    }
+    passwd = (char *)malloc(strlen(argv[1]) + 1);
+    strcpy(passwd, argv[1]);
+
     check_switch(ON, passwd);
     check_switch(OFF, passwd);
     check_switch(REC_ON, passwd);

@@ -6,8 +6,18 @@
 #include <errno.h>
 #include <string.h>
 
-int main() {
-    const char *pathname = "/home/matteo/Desktop/kernel-level-reference-monitor/test/files/test_mknod";
+int main(int argc, char *argv[]) {
+    char *pathname;
+
+    // Get target file from parameters
+    if (argc < 2) {
+        printf("Usage: %s <file>\n", argv[0]);
+        return -1;
+    }
+
+    pathname = (char *)malloc(strlen(argv[1]) + 1);
+    strcpy(pathname, argv[1]);
+
 
     // Create a regular file using mknod
     int res = mknod(pathname, S_IFREG | 0666, 0);

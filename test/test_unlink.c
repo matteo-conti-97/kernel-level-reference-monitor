@@ -3,12 +3,20 @@
 #include <errno.h>
 #include <string.h>
 
-#define TARGET_LINK "/home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova_dir/test_unlink.txt"
-
 int main(int argc, char *argv[]) {
 
+    char *target_link;
+    
+    //Get target file from parameters
+    if (argc < 2) {
+        printf("Usage: %s <link>\n", argv[0]);
+        return -1;
+    }
+    target_link = (char *)malloc(strlen(argv[1]) + 1);
+    strcpy(target_link, argv[1]);
+
     // Attempt to unlink the file
-    int res = unlink(TARGET_LINK);
+    int res = unlink(target_link);
     if (res == -1) {
         switch(errno){
             case EACCES:

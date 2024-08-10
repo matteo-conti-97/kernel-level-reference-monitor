@@ -1,5 +1,7 @@
-/home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova.txt
+file-> /home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova.txt
 
-/home/matteo/Desktop/kernel-level-reference-monitor/test/files
+directory -> /home/matteo/Desktop/kernel-level-reference-monitor/test/files
 
-/home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova
+directory -> /home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova
+
+link -> /home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova_dir/test_unlink.txt

@@ -4,7 +4,7 @@
 #include <string.h>
 
 #define TARGET_FILE "/home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova.txt"
-#define TARGET_LINK "/home/matteo/Desktop/kernel-level-reference-monitor/test/files/test_symlink.txt"
+#define TARGET_LINK "/home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova_dir/test_symlink.txt"
 
 int main(int argc, char *argv[]) {
 

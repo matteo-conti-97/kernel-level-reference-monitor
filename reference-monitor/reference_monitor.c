@@ -316,7 +316,7 @@ char *symbol_names[KPROBES_SIZE] = {
     "security_inode_create",
     "security_inode_link",
     "security_inode_unlink",
-    "vfs_symlink"};
+    "security_inode_symlink"};
 
 typedef int (*kretprobe_handler_t)(struct kretprobe_instance *prob_inst, struct pt_regs *regs);
 
@@ -330,16 +330,14 @@ kretprobe_handler_t handler_array[KPROBES_SIZE] = {
     (kretprobe_handler_t)security_inode_create_handler,
     (kretprobe_handler_t)security_inode_link_handler,
     (kretprobe_handler_t)security_inode_unlink_handler,
-    (kretprobe_handler_t)vfs_symlink_handler};
+    (kretprobe_handler_t)security_inode_symlink_handler};
 
 // PROBES HANDLERS
 /* Note Registers Used for Passing Arguments:
 rdi: First argument
 rsi: Second argument
 rdx: Third argument
-r10: Fourth argument (note: r10 is used instead of rcx)
-r8: Fifth argument
-r9: Sixth argument
+rcx: Fourth argument
 rax: Used for returning the result of the system call*/
 
 int ret_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
@@ -430,7 +428,7 @@ int security_path_rename_handler(struct kretprobe_instance *prob_inst, struct pt
         struct dentry *dentry;
         char *buff;
         const char *old_pathname;
-        //const char *new_pathname;
+        const char *new_pathname;
 
         // Get the old path
         dentry = (struct dentry *)regs->si;
@@ -447,7 +445,7 @@ int security_path_rename_handler(struct kretprobe_instance *prob_inst, struct pt
                 return 0;
         }
 
-        /*
+        
         // Get the new path
         dentry = (struct dentry *)regs->cx;
         
@@ -461,7 +459,7 @@ int security_path_rename_handler(struct kretprobe_instance *prob_inst, struct pt
                 printk("%s: [ERROR] could not get path from dentry\n", MODNAME);
                 kfree(buff);
                 return 0;
-        }*/
+        }
 
  
         // Check if old res is protected
@@ -471,12 +469,12 @@ int security_path_rename_handler(struct kretprobe_instance *prob_inst, struct pt
                 return 0;
         }
 
-        /*// Check if new res is protected
+        // Check if new res is protected
         if (check_protected_resource(&ref_mon, new_pathname))
         {
                 printk("%s: [ERROR] Blocked rename access to protected resource %s\n", MODNAME, new_pathname);
                 return 0;
-        }*/
+        }
         
         return 1;
 }
@@ -614,7 +612,7 @@ int security_inode_link_handler(struct kretprobe_instance *prob_inst, struct pt_
         struct dentry *dentry;
         char *buff;
         const char *old_pathname;
-        //const char *new_pathname;
+        const char *new_pathname;
 
         // Get the old path
         dentry = (struct dentry *)regs->di;
@@ -632,7 +630,7 @@ int security_inode_link_handler(struct kretprobe_instance *prob_inst, struct pt_
                 return 0;
         }
 
-       /*// Get the new path
+       // Get the new path
         dentry = (struct dentry *)regs->dx;
         
         buff = (char *)kmalloc(GFP_KERNEL, MAX_FILENAME_LEN);
@@ -646,7 +644,7 @@ int security_inode_link_handler(struct kretprobe_instance *prob_inst, struct pt_
                 printk("%s: [ERROR] could not get path from dentry\n", MODNAME);
                 kfree(buff);
                 return 0;
-        }*/
+        }
 
         // Check if old path is protected
         if (check_protected_resource(&ref_mon, old_pathname))
@@ -655,12 +653,12 @@ int security_inode_link_handler(struct kretprobe_instance *prob_inst, struct pt_
                 return 0;
         }
 
-        /*// Check if new path is protected
+        // Check if new path is protected
         if (check_protected_resource(&ref_mon, new_pathname))
         {
                 printk("%s: [ERROR] Blocked link access to protected resource %s\n", MODNAME, new_pathname);
                 return 0;
-        }*/
+        }
 
         
         return 1;
@@ -698,8 +696,49 @@ int security_inode_unlink_handler(struct kretprobe_instance *prob_inst, struct p
         return 1;
 }
 
-int vfs_symlink_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
+int security_inode_symlink_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
 {
+        struct dentry *dentry;
+        char *buff;
+        const char *old_pathname;
+        const char *new_pathname;
+
+        // Get the old path
+        
+        old_pathname = (const char *)regs->dx;
+
+
+       // Get the new path
+        dentry = (struct dentry *)regs->si;
+        
+        buff = (char *)kmalloc(GFP_KERNEL, MAX_FILENAME_LEN);
+        if (!buff) {
+                printk("%s: [ERROR] could not allocate memory for buffer\n", MODNAME);
+                return 0;
+        }
+        
+        new_pathname = dentry_path_raw(dentry, buff, MAX_FILENAME_LEN);
+        if (IS_ERR(new_pathname)) {
+                printk("%s: [ERROR] could not get path from dentry\n", MODNAME);
+                kfree(buff);
+                return 0;
+        }
+
+        // Check if old path is protected
+        if (check_protected_resource(&ref_mon, old_pathname))
+        {
+                printk("%s: [ERROR] Blocked symlink access to protected resource %s\n", MODNAME, old_pathname);
+                return 0;
+        }
+
+        // Check if new path is protected
+        if (check_protected_resource(&ref_mon, new_pathname))
+        {
+                printk("%s: [ERROR] Blocked symlink access to protected resource %s\n", MODNAME, new_pathname);
+                return 0;
+        }
+
+        
         return 1;
 }
 

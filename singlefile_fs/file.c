@@ -136,8 +136,8 @@ ssize_t onefilefs_write(struct kiocb *iocb, struct iov_iter *from)
 
     offset += payload;
 
-    mutex_unlock(&mutex);
     kfree(data);
+    mutex_unlock(&mutex);
 
     return payload;
 }

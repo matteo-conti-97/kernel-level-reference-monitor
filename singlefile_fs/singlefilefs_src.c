@@ -135,6 +135,8 @@ static int singlefilefs_init(void)
 
     int ret;
 
+    printk("%s: [INFO] Registering singlefilefs\n", MOD_NAME);
+
     // register filesystem
     ret = register_filesystem(&onefilefs_type);
     if (likely(ret == 0))
@@ -152,6 +154,8 @@ static void singlefilefs_exit(void)
 
     int ret;
 
+    printk("%s: [INFO] Unregistering singlefilefs\n", MOD_NAME);
+    
     // unregister filesystem
     ret = unregister_filesystem(&onefilefs_type);
 

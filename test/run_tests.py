@@ -1,11 +1,11 @@
 import subprocess
 import sys
 
-default_passwd = "password"
+default_passwd = "1234"
 
 def switch_state(state, passwd):
     # Ensure the C executable is in the same directory or provide the full path
-    executable = './test_state_transition'
+    executable = './switch_state'
     
     if(passwd is None):
         passwd = default_passwd
@@ -37,7 +37,7 @@ def insert_resource(res, passwd):
     
     try:
         # Run the C program with the provided parameters
-        result = subprocess.run([executable] + [passwd], capture_output=True, text=True)
+        result = subprocess.run([executable] + ['1', res, passwd], capture_output=True, text=True)
         
         # Print the output of the C program
         print("C Program Output:")
@@ -62,7 +62,7 @@ def remove_resource(res, passwd):
     
     try:
         # Run the C program with the provided parameters
-        result = subprocess.run([executable] + [passwd], capture_output=True, text=True)
+        result = subprocess.run([executable] + [res, passwd], capture_output=True, text=True)
         
         # Print the output of the C program
         print("C Program Output:")
@@ -102,8 +102,6 @@ def test_state_transistion(passwd):
         print(f"Error: The executable '{executable}' was not found.")
     except Exception as e:
         print(f"An error occurred: {e}")
-    
-    switch_state('0', passwd)
         
 def test_insert_remove(res, passwd):
     # Ensure the C executable is in the same directory or provide the full path
@@ -139,8 +137,8 @@ def test_open(res_path, protected_res_path):
     # Ensure the C executable is in the same directory or provide the full path
     executable = './test_open'
     
-    default_res_path = "/home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova.txt"
-    default_protected_res_path = "/home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova.txt"
+    default_res_path = '/home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova.txt'
+    default_protected_res_path = '/home/matteo/Desktop/kernel-level-reference-monitor/test/files/prova.txt'
     
     if(res_path is None):
         res_path = default_res_path
@@ -149,6 +147,7 @@ def test_open(res_path, protected_res_path):
         protected_res_path = default_protected_res_path
         
     insert_resource(default_protected_res_path, default_passwd)
+    
     
     try:
         # Run the C program with the provided parameters
@@ -463,7 +462,7 @@ def test_rmdir(dir_path, protected_dir_path):
         
     remove_resource(default_protected_dir_path, default_passwd)
 
-def test_mkdir(dir_path, protected_dir_path):
+def test_mknod(dir_path, protected_dir_path):
     # Ensure the C executable is in the same directory or provide the full path
     executable = './test_mkdir'
     
@@ -502,49 +501,64 @@ def test_mkdir(dir_path, protected_dir_path):
 if __name__ == "__main__":
     
     #Test state transition with correct password
+    print("##############TESTING STATE TRANSITION WITH CORRECT PASSWORD##############")
     test_state_transistion(default_passwd)
     
     #Test state transition with incorrect password
+    print("##############TESTING STATE TRANSITION WITH INCORRECT PASSWORD##############")
     test_state_transistion("wrong_password")
     
     #return to state REC_ON
+    print("##############RETURNING TO REC_ON STATE##############")
     switch_state('2', default_passwd)
     
     #Test insert and remove with correct password
+    print("##############TESTING INSERT AND REMOVE WITH CORRECT PASSWORD##############")
     test_insert_remove(None, default_passwd)
     
     #Test insert and remove with incorrect password
+    print("##############TESTING INSERT AND REMOVE WITH INCORRECT PASSWORD##############")
     test_insert_remove(None, "wrong_password")
     
     #Test open
+    print("##############TESTING OPEN##############")
     test_open(None, None)
     
-    #Test create
+    '''#Test create
+    print("##############TESTING CREATE##############")
     test_create(None, None)
     
     #Test mk_hardlink
+    print("##############TESTING MK_HARDLINK##############")
     test_mk_hardlink(None, None, None)
     
     #Test mk_symlink
+    print("##############TESTING MK_SYMLINK##############")
     test_mk_symlink(None, None, None)
     
     #Test unlink
+    print("##############TESTING UNLINK############")
     test_unlink(None, None)
     
     #Test truncate
+    print("##############TESTING TRUNCATE############")
     test_truncate(None, None)
     
     #Test rename
+    print("##############TESTING RENAME############")
     test_rename(None, None, None)
     
     #Test mkdir
+    print("##############TESTING MKDIR############")
     test_mkdir(None, None)
     
     #Test rmdir
+    print("##############TESTING RMDIR############")
     test_rmdir(None, None)
     
     #Test mknod
-    test_mknod(None, None)
+    print("##############TESTING MKNOD############")
+    test_mknod(None, None)'''
     
     
     

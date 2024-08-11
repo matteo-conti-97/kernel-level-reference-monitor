@@ -19,6 +19,7 @@ int main(int argc, char *argv[]) {
     target_file = (char *) malloc(strlen(argv[1]) + 1);
     strcpy(target_file, argv[1]);
 
+    printf("Opening file %s\n", target_file);
 
     int fd = open(target_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     // Attempt to open the file in write mode
@@ -33,7 +34,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    printf("File '%s' opened successfully.\n", target_file);
+    printf("File %s opened successfully.\n", target_file);
     
     // Write the test data to the file
     bytes_written = write(fd, test_data, strlen(test_data));
@@ -47,6 +48,8 @@ int main(int argc, char *argv[]) {
                 return -1;
         }
     }
+
+    close(fd);
 
     printf("Data written to file '%s'.\n", target_file);
     

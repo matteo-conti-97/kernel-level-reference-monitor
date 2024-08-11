@@ -32,17 +32,19 @@ void check_add(char *path, char *passwd){
 }
 
 int main(int argc, char *argv[]){
-    char passwd[128] = "1234";
+    char *passwd;
     char *path;
 
-    if(argc < 3){
-        printf("Usage: %s <num_copies> <path>\n", argv[0]);
+    if(argc < 4){
+        printf("Usage: %s <num_copies> <path> <password>\n", argv[0]);
         return -1;
     }
 
     int num_copies = atoi(argv[1]);
     path = malloc(strlen(argv[2]) + 1);
     strcpy(path, argv[2]);
+    passwd = malloc(strlen(argv[3]) + 1);
+    strcpy(passwd, argv[3]);
 
     printf("Adding resource %s %d times\n", path, num_copies);
 

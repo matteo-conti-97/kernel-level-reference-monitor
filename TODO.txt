@@ -2,7 +2,7 @@
 -Implement system call to switch state - DONE But missing kprope enabling
 -Implement system call to add protected resource - DONE
 -Implement system call to remove protected resource - DONE
--Implement system call get protected resources list
--Implement kernel probe to reject access to protected resources
+-Implement system call get protected resources list - MAYBE
+-Implement kernel probe to reject access to protected resources - DONE
 -Implement single file filesystem for logging
 -Implement logging as deferred work in kprobes

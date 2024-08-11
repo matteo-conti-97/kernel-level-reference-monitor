@@ -214,15 +214,9 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
                 return GENERIC_ERR;
         }
 
-        // Lock the reference monitor
-        spin_lock(&ref_mon.lock);
-
         // Add the new protected resource to the list
         add_new_protected_resource(&ref_mon, new_protected_resource);
         print_protected_resources(&ref_mon);
-
-        // Unlock the reference monitor
-        spin_unlock(&ref_mon.lock);
 
         return SUCCESS;
 }
@@ -274,7 +268,6 @@ asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
         }
 
         // Lock the reference monitor
-        spin_lock(&ref_mon.lock);
 
         while (remove_protected_resource(&ref_mon, res_path) >= 0)
                 i++;
@@ -282,14 +275,10 @@ asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
         if (i == 0)
         {
                 printk("%s: [ERROR] resource not protected\n", MODNAME);
-                spin_unlock(&ref_mon.lock);
                 return RES_NOT_PROTECTED_ERR;
         }
         printk("%s: [INFO] removed protected resource %d times\n", MODNAME, i);
         print_protected_resources(&ref_mon);
-
-        // Unlock the reference monitor
-        spin_unlock(&ref_mon.lock);
 
         return SUCCESS;
 }

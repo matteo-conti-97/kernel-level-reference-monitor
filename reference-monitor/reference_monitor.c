@@ -42,6 +42,7 @@ Threads could also be awaken in non-FIFO order because of Posix signals.
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Matteo Conti <matteo.conti.97@students.uniroma2.eu>");
+MODULE_DESCRIPTION("This module implements a reference monitor which offers a set of system calls to manage protected resources and a set of kernel probes to block write operations on protected resources");
 
 #define MODNAME "REFERENCE_MONITOR"
 

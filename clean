@@ -16,6 +16,12 @@ make clean || { echo "Make command failed"; exit 1; }
 
 cd ..
 
+cd singlefile_fs || { echo "Failed to enter directory singlefile_fs"; exit 1; }
+
+make clean || { echo "Make command failed"; exit 1; }
+
+cd ..
+
 # Navigate to directory utils
 cd utils || { echo "Failed to enter directory utils"; exit 1; }
 

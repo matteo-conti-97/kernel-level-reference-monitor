@@ -16,6 +16,13 @@ make all || { echo "Make command failed"; exit 1; }
 
 cd ..
 
+cd singlefile_fs || { echo "Failed to enter directory singlefile_fs"; exit 1; }
+
+# Run make
+make all || { echo "Make command failed"; exit 1; }
+
+cd ..
+
 # Navigate to directory test
 cd test || { echo "Failed to enter directory test"; exit 1; }
 

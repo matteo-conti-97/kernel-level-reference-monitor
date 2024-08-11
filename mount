@@ -8,6 +8,16 @@ make mount || { echo "Make command failed"; exit 1; }
 
 cd ..
 
+cd singlefile_fs || { echo "Failed to enter directory singlefile_fs"; exit 1; }
+
+make load-FS-driver || { echo "Make command failed"; exit 1; }
+
+make create-fs || { echo "Make command failed"; exit 1; }
+
+make mount-fs || { echo "Make command failed"; exit 1; }
+
+cd ..
+
 # Navigate to directory reference-monitor
 cd reference-monitor || { echo "Failed to enter directory reference-monitor"; exit 1; }
 

@@ -22,6 +22,6 @@ cd ..
 cd reference-monitor || { echo "Failed to enter directory reference-monitor"; exit 1; }
 
 # Run make
-make mount  || { echo "Make command failed"; exit 1; }
+make mount passwd=$1 || { echo "Make command failed"; exit 1; }
 
 echo "Mount successful"

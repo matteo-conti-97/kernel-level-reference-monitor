@@ -39,6 +39,7 @@ Threads could also be awaken in non-FIFO order because of Posix signals.
 #include "error_codes.h"
 #include "../utils/utils.h"
 #include "probes.h"
+#include "deferred_log.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Matteo Conti <matteo.conti.97@students.uniroma2.eu>");
@@ -813,6 +814,104 @@ void disable_probes()
         kfree(kprobe_array);
 }
 
+//DEFERRED WORK
+
+//Collect the data to be logged
+void setup_deferred_work(void){
+        struct dentry *exe_dentry;
+        struct mm_struct *mm;
+        packed_task *task;
+        int tid, tgid, uid, euid;
+        char *exe_path;
+        char *buff;
+
+        //Get the ids info about the user and the thread who attempted the operation
+        tid = current->pid;
+        tgid = task_tgid_vnr(current);
+        uid = current_uid().val;
+        euid = current_euid().val;
+
+        //Get the path of the executable who attempted the operation
+        mm = current->mm;
+        exe_dentry = mm->exe_file->f_path.dentry;
+
+        buff = (char *)kmalloc(GFP_KERNEL, MAX_FILENAME_LEN);
+        if (!buff) {
+                printk("%s: [ERROR] could not allocate memory for buffer\n", MODNAME);
+                return;
+        }
+        exe_path = dentry_path_raw(exe_dentry, buff, MAX_FILENAME_LEN);
+        exe_path = kstrdup(exe_path, GFP_KERNEL);
+
+        /* Schedule hash computation and writing on file in deferred work */
+        task = kmalloc(sizeof(packed_task), GFP_KERNEL);
+        if (task == NULL)
+        {
+                printk("%s: [ERROR] tasklet allocation failure\n", MODNAME);
+                return;
+        }
+
+        task->buffer = task;
+        task->tid = tid;
+        task->tgid = tgid;
+        task->uid = uid;
+        task->euid = euid;
+        task->exe_path = exe_path;
+
+        // Init and chedule the tasklet
+        tasklet_init(&task->tasklet, deferred_log, (unsigned long)task);
+        tasklet_schedule(&task->tasklet);
+}
+
+//Compute the hash of the exe who attempted the operation and write the data on a file
+void deferred_log(unsigned long data){
+        char log_row[512];
+        struct file *log_file;
+        int written; 
+        packed_task *task;
+        int tid, tgid, uid, euid;
+        char *exe_path;
+        char *exe_hash;
+       
+        //Get the data to be logged
+        task = (packed_task*)data;
+
+        task = container_of((void *)data, packed_task, tasklet);
+        tid = task->tid;
+        tgid = task->tgid;
+        uid = task->uid;
+        euid = task->euid;
+        exe_path = task->exe_path;
+
+        //TODO Implement the hash computazion
+        //exe_hash = compute_sha256(NULL, 0, NULL);
+        
+
+        //Generate the log row
+        snprintf(log_row, 512, "%d, %d, %d, %d, %s, %s\n", tid, tgid,
+                 uid, euid, exe_path, exe_hash);
+
+
+        log_file = filp_open(LOG_PATH, O_WRONLY, 0644);
+        if (IS_ERR(log_file))
+        {
+                printk("%s [ERROR] Error in opening log file", MODNAME);
+                kfree((void *)container_of((void *)data, packed_task, tasklet));
+                return;
+        }
+
+        written = kernel_write(log_file, log_row, strlen(log_row), &log_file->f_pos);
+        if (written < 0)
+        {
+                printk("%s [ERROR] Error in writing on log file", MODNAME);
+        }
+
+        filp_close(log_file, NULL);
+
+        kfree((void *)container_of((void *)data, packed_task, tasklet));
+}
+
+// MODULE INIT AND CLEANUP
 int init_module(void)
 {
 

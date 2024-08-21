@@ -86,20 +86,20 @@ asmlinkage long sys_switch_state(int state, char *passwd)
         }
 
         // Check password hash
-        hash_passwd = kmalloc(HASH_LEN, GFP_KERNEL);
+        hash_passwd = kmalloc(HASH_HEX_SIZE, GFP_KERNEL);
         if (hash_passwd == NULL)
         {
                 printk("%s: [ERROR] could not allocate memory for password\n", MODNAME);
                 return -ENOMEM;
         }
 
-        if (compute_sha256(passwd, strlen(passwd), hash_passwd) < 0)
+        if (compute_sha256(passwd, hash_passwd) < 0)
         {
                 printk("%s: [ERROR] could not compute sha256 of given password\n", MODNAME);
                 return GENERIC_ERR;
         }
 
-        if (!compare_hashes(hash_passwd, ref_mon.hash_passwd, HASH_LEN))
+        if (!compare_hashes(hash_passwd, ref_mon.hash_passwd, HASH_HEX_SIZE))
         {
                 printk("%s: [ERROR] given password does not match\n", MODNAME);
                 return PASSWD_MISMATCH_ERR;
@@ -182,20 +182,20 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
         }
 
         // Check password hash
-        hash_passwd = kmalloc(HASH_LEN, GFP_KERNEL);
+        hash_passwd = kmalloc(HASH_HEX_SIZE, GFP_KERNEL);
         if (hash_passwd == NULL)
         {
                 printk("%s: [ERROR] could not allocate memory for password\n", MODNAME);
                 return -ENOMEM;
         }
 
-        if (compute_sha256(passwd, strlen(passwd), hash_passwd) < 0)
+        if (compute_sha256(passwd, hash_passwd) < 0)
         {
                 printk("%s: [ERROR] could not compute sha256 of given password\n", MODNAME);
                 return GENERIC_ERR;
         }
 
-        if (!compare_hashes(hash_passwd, ref_mon.hash_passwd, HASH_LEN))
+        if (!compare_hashes(hash_passwd, ref_mon.hash_passwd, HASH_HEX_SIZE))
         {
                 printk("%s: [ERROR] given password does not match\n", MODNAME);
                 return PASSWD_MISMATCH_ERR;
@@ -243,20 +243,20 @@ asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
         }
 
         // Check password hash
-        hash_passwd = kmalloc(HASH_LEN, GFP_KERNEL);
+        hash_passwd = kmalloc(HASH_HEX_SIZE, GFP_KERNEL);
         if (hash_passwd == NULL)
         {
                 printk("%s: [ERROR] could not allocate memory for password\n", MODNAME);
                 return -ENOMEM;
         }
 
-        if (compute_sha256(passwd, strlen(passwd), hash_passwd) < 0)
+        if (compute_sha256(passwd, hash_passwd) < 0)
         {
                 printk("%s: [ERROR] could not compute sha256 of given password\n", MODNAME);
                 return GENERIC_ERR;
         }
 
-        if (!compare_hashes(hash_passwd, ref_mon.hash_passwd, HASH_LEN))
+        if (!compare_hashes(hash_passwd, ref_mon.hash_passwd, HASH_HEX_SIZE))
         {
                 printk("%s: [ERROR] given password does not match\n", MODNAME);
                 return PASSWD_MISMATCH_ERR;
@@ -889,7 +889,7 @@ void deferred_log(unsigned long data){
 
         //Generate the log row
         snprintf(log_row, 512, "%d, %d, %d, %d, %s, %s\n", tid, tgid,
-                 uid, euid, exe_path, exe_hash);
+                 uid, euid, exe_path, "N/A");
 
 
         log_file = filp_open(LOG_PATH, O_WRONLY, 0644);
@@ -921,18 +921,20 @@ int init_module(void)
         printk("%s: [INFO] initializing reference monitor state\n", MODNAME);
 
         // setup password
-        ref_mon.hash_passwd = kmalloc(HASH_LEN, GFP_KERNEL);
+        ref_mon.hash_passwd = kmalloc(HASH_HEX_SIZE, GFP_KERNEL);
         if (ref_mon.hash_passwd == NULL)
         {
                 printk("%s: [ERROR] could not allocate memory for password\n", MODNAME);
                 return -ENOMEM;
         }
 
-        if (compute_sha256(passwd, strlen(passwd), ref_mon.hash_passwd) < 0)
+        if (compute_sha256(passwd, ref_mon.hash_passwd) < 0)
         {
                 printk("%s: [ERROR] could not compute sha256 of password\n", MODNAME);
                 return GENERIC_ERR;
         }
+
+        printk("%s: [INFO] PASSWORD HASH %s", MODNAME, ref_mon.hash_passwd);
 
         // delete password
         memset(passwd, 0, PASSWD_LEN);

@@ -9,10 +9,11 @@ bool compare_hashes(const char *hash1, const char *hash2, size_t length) {
     return memcmp(hash1, hash2, length) == 0;
 }
 
-int compute_sha256(const char *data, size_t data_len, char *output) {
+int compute_sha256(const char *data, char *output) {
     struct crypto_shash *tfm;
     struct shash_desc *shash;
-    int ret;
+    int ret, i;
+    char hash[HASH_DIGEST_SIZE];
 
     // Allocate a transformation object
     tfm = crypto_alloc_shash("sha256", 0, 0);
@@ -38,7 +39,7 @@ int compute_sha256(const char *data, size_t data_len, char *output) {
     }
 
     // Update with data
-    ret = crypto_shash_update(shash, data, data_len);
+    ret = crypto_shash_update(shash, data, strlen(data));
     if (ret) {
         kfree(shash);
         crypto_free_shash(tfm);
@@ -46,7 +47,13 @@ int compute_sha256(const char *data, size_t data_len, char *output) {
     }
 
     // Finalize the hash computation
-    ret = crypto_shash_final(shash, output);
+    ret = crypto_shash_final(shash, hash);
+
+    //Convert to hex
+    for (i = 0; i < HASH_DIGEST_SIZE; i++) {
+        sprintf(output + i * 2, "%02x", (unsigned char)hash[i]);
+    }
+    output[HASH_HEX_SIZE] = '\0';
 
     // Clean up
     kfree(shash);

@@ -372,6 +372,7 @@ int vfs_open_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
                 if (check_protected_resource(&ref_mon, pathname))
                 {
                         printk("%s: [ERROR] Blocked open access to protected resource %s\n", MODNAME, pathname);
+                        setup_deferred_work();
                         return 0;
                 }
         }
@@ -408,6 +409,7 @@ int security_path_truncate_handler(struct kretprobe_instance *prob_inst, struct 
         if (check_protected_resource(&ref_mon, pathname))
         {
                 printk("%s: [ERROR] Blocked truncate access to protected resource %s\n", MODNAME, pathname);
+                setup_deferred_work();
                 return 0;
         }
         
@@ -457,6 +459,7 @@ int security_path_rename_handler(struct kretprobe_instance *prob_inst, struct pt
         if (check_protected_resource(&ref_mon, old_pathname))
         {
                 printk("%s: [ERROR] Blocked rename access to protected resource %s\n", MODNAME, old_pathname);
+                setup_deferred_work();
                 return 0;
         }
 
@@ -464,6 +467,7 @@ int security_path_rename_handler(struct kretprobe_instance *prob_inst, struct pt
         if (check_protected_resource(&ref_mon, new_pathname))
         {
                 printk("%s: [ERROR] Blocked rename access to protected resource %s\n", MODNAME, new_pathname);
+                setup_deferred_work();
                 return 0;
         }
         
@@ -496,6 +500,7 @@ int security_inode_mkdir_handler(struct kretprobe_instance *prob_inst, struct pt
         if (check_protected_resource(&ref_mon, pathname))
         {
                 printk("%s: [ERROR] Blocked mkdir access to protected resource %s\n", MODNAME, pathname);
+                setup_deferred_work();
                 return 0;
         }
         
@@ -528,6 +533,7 @@ int security_path_mknod_handler(struct kretprobe_instance *prob_inst, struct pt_
         if (check_protected_resource(&ref_mon, pathname))
         {
                 printk("%s: [ERROR] Blocked mknod access to protected resource %s\n", MODNAME, pathname);
+                setup_deferred_work();
                 return 0;
         }
         
@@ -560,6 +566,7 @@ int security_inode_rmdir_handler(struct kretprobe_instance *prob_inst, struct pt
         if (check_protected_resource(&ref_mon, pathname))
         {
                 printk("%s: [ERROR] Blocked rmdir access to protected resource %s\n", MODNAME, pathname);
+                setup_deferred_work();
                 return 0;
         }
         
@@ -592,6 +599,7 @@ int security_inode_create_handler(struct kretprobe_instance *prob_inst, struct p
         if (check_protected_resource(&ref_mon, pathname))
         {
                 printk("%s: [ERROR] Blocked create access to protected resource %s\n", MODNAME, pathname);
+                setup_deferred_work();
                 return 0;
         }
         
@@ -641,6 +649,7 @@ int security_inode_link_handler(struct kretprobe_instance *prob_inst, struct pt_
         if (check_protected_resource(&ref_mon, old_pathname))
         {
                 printk("%s: [ERROR] Blocked link access to protected resource %s\n", MODNAME, old_pathname);
+                setup_deferred_work();
                 return 0;
         }
 
@@ -648,6 +657,7 @@ int security_inode_link_handler(struct kretprobe_instance *prob_inst, struct pt_
         if (check_protected_resource(&ref_mon, new_pathname))
         {
                 printk("%s: [ERROR] Blocked link access to protected resource %s\n", MODNAME, new_pathname);
+                setup_deferred_work();
                 return 0;
         }
 
@@ -681,6 +691,7 @@ int security_inode_unlink_handler(struct kretprobe_instance *prob_inst, struct p
         if (check_protected_resource(&ref_mon, pathname))
         {
                 printk("%s: [ERROR] Blocked unlink access to protected resource %s\n", MODNAME, pathname);
+                setup_deferred_work();
                 return 0;
         }
         
@@ -719,6 +730,7 @@ int security_inode_symlink_handler(struct kretprobe_instance *prob_inst, struct 
         if (check_protected_resource(&ref_mon, old_pathname))
         {
                 printk("%s: [ERROR] Blocked symlink access to protected resource %s\n", MODNAME, old_pathname);
+                setup_deferred_work();
                 return 0;
         }
 
@@ -726,6 +738,7 @@ int security_inode_symlink_handler(struct kretprobe_instance *prob_inst, struct 
         if (check_protected_resource(&ref_mon, new_pathname))
         {
                 printk("%s: [ERROR] Blocked symlink access to protected resource %s\n", MODNAME, new_pathname);
+                setup_deferred_work();
                 return 0;
         }
 
@@ -820,12 +833,14 @@ void disable_probes()
 void setup_deferred_work(void){
         struct dentry *exe_dentry;
         struct mm_struct *mm;
-        packed_task *task;
         int tid, tgid, uid, euid;
         char *exe_path;
+        packed_task *task;
         char *buff;
 
-        //Get the ids info about the user and the thread who attempted the operation
+        printk("%s: [INFO] setting up deferred work\n", MODNAME);
+
+
         tid = current->pid;
         tgid = task_tgid_vnr(current);
         uid = current_uid().val;
@@ -840,10 +855,15 @@ void setup_deferred_work(void){
                 printk("%s: [ERROR] could not allocate memory for buffer\n", MODNAME);
                 return;
         }
-        exe_path = dentry_path_raw(exe_dentry, buff, MAX_FILENAME_LEN);
-        exe_path = kstrdup(exe_path, GFP_KERNEL);
 
-        /* Schedule hash computation and writing on file in deferred work */
+        exe_path = dentry_path_raw(exe_dentry, buff, MAX_FILENAME_LEN);
+        if (IS_ERR(exe_path)) {
+                printk("%s: [ERROR] could not get path from dentry\n", MODNAME);
+                kfree(buff);
+                return;
+        }
+
+        // Schedule hash computation and writing on file in deferred work 
         task = kmalloc(sizeof(packed_task), GFP_KERNEL);
         if (task == NULL)
         {
@@ -852,6 +872,7 @@ void setup_deferred_work(void){
         }
 
         task->buffer = task;
+
         task->tid = tid;
         task->tgid = tgid;
         task->uid = uid;
@@ -861,54 +882,98 @@ void setup_deferred_work(void){
         // Init and chedule the tasklet
         tasklet_init(&task->tasklet, deferred_log, (unsigned long)task);
         tasklet_schedule(&task->tasklet);
+        printk("%s: [INFO] deferred work scheduled\n", MODNAME);
 }
 
 //Compute the hash of the exe who attempted the operation and write the data on a file
 void deferred_log(unsigned long data){
         char log_row[512];
         struct file *log_file;
-        int written; 
-        packed_task *task;
+        struct file *exe_file;
+        int ret;
+        long long int pos=0; 
         int tid, tgid, uid, euid;
         char *exe_path;
-        char *exe_hash;
-       
-        //Get the data to be logged
-        task = (packed_task*)data;
+        char *exe_content;
+        int exe_size;
+        char exe_hash[HASH_HEX_SIZE];
+        bool exe_available=true;
 
-        task = container_of((void *)data, packed_task, tasklet);
-        tid = task->tid;
-        tgid = task->tgid;
-        uid = task->uid;
-        euid = task->euid;
-        exe_path = task->exe_path;
+        printk("%s: [INFO] executing deferred work\n", MODNAME);
 
-        //TODO Implement the hash computazion
-        //exe_hash = compute_sha256(NULL, 0, NULL);
+        tid = ((packed_task*)data)->tid;
+        tgid = ((packed_task*)data)->tgid;
+        uid = ((packed_task*)data)->uid;
+        euid = ((packed_task*)data)->euid;
+        exe_path = ((packed_task*)data)->exe_path;
+
+        //Hash computation
+        //Open the exe file
+        exe_file = filp_open(exe_path, O_RDONLY, 0);
+        if (IS_ERR(exe_file)) {
+                printk("%s [ERROR] Can't open exe file", MODNAME);
+                exe_available = false;
+        }
         
+        //Get the size of the exe file
+        exe_size = vfs_llseek(exe_file, 0, SEEK_END);
+        if (exe_size < 0) {
+                printk("%s [ERROR] Can't seek exe file", MODNAME);
+                filp_close(exe_file, NULL);
+                exe_available = false;
+        }
+
+        //Read the content of the exe file
+        vfs_llseek(exe_file, 0, SEEK_SET);
+        exe_content = kmalloc(exe_size + 1, GFP_KERNEL);
+        if (!exe_content) {
+                printk("%s [ERROR] Can't allocate memory for exe content", MODNAME);
+                filp_close(exe_file, NULL);
+                exe_available = false;
+        }
+
+        ret = kernel_read(exe_file, exe_content, exe_size, &pos);
+        if (ret < 0) {
+                printk("%s [ERROR] Can't read exe file", MODNAME);
+                filp_close(exe_file, NULL);
+                kfree(exe_content);
+                exe_available = false;
+        } else{
+                filp_close(exe_file, NULL);
+                exe_content[ret] = '\0';
+        }
 
         //Generate the log row
-        snprintf(log_row, 512, "%d, %d, %d, %d, %s, %s\n", tid, tgid,
-                 uid, euid, exe_path, "N/A");
+        if(exe_available){
+                //Compute the hash of the exe file
+                if (compute_sha256(exe_content, exe_hash) < 0)
+                {
+                        printk("%s: [ERROR] could not compute sha256 of exe content\n", MODNAME);
+                        snprintf(log_row, 512, "%d, %d, %d, %d, %s, %s\n", tid, tgid, uid, euid, exe_path, "N/A");
+                }
+                snprintf(log_row, 512, "%d, %d, %d, %d, %s, %s\n", tid, tgid, uid, euid, exe_path, exe_hash);
+        }
+        else
+                snprintf(log_row, 512, "%d, %d, %d, %d, %s, %s\n", tid, tgid, uid, euid, exe_path, "N/A");
 
+        printk("%s: [INFO] log row: %s\n", MODNAME, log_row);
 
+        //Write the log row on the log file
         log_file = filp_open(LOG_PATH, O_WRONLY, 0644);
         if (IS_ERR(log_file))
         {
                 printk("%s [ERROR] Error in opening log file", MODNAME);
-                kfree((void *)container_of((void *)data, packed_task, tasklet));
                 return;
         }
 
-        written = kernel_write(log_file, log_row, strlen(log_row), &log_file->f_pos);
-        if (written < 0)
+        ret = kernel_write(log_file, log_row, strlen(log_row), &log_file->f_pos);
+        if (ret < 0)
         {
                 printk("%s [ERROR] Error in writing on log file", MODNAME);
         }
 
         filp_close(log_file, NULL);
-
-        kfree((void *)container_of((void *)data, packed_task, tasklet));
+        kfree(exe_content);
 }
 
 // MODULE INIT AND CLEANUP

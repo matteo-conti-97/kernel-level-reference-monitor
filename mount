@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Check if parameter $1 (password) is provided
+if [ -z "$1" ]; then
+  echo "Error: Password parameter is missing."
+  echo "Usage: $0 <password>"
+  exit 1
+fi
+
 # Navigate to directory syscall_table_discover
 cd syscall_table_discover || { echo "Failed to enter directory syscall_table_discover"; exit 1; }
 

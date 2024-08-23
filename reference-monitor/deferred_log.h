@@ -7,7 +7,6 @@ typedef struct _packed_task{
         int uid;
         int euid;
         char *exe_path;
-        char *exe_hash;
         struct tasklet_struct tasklet;
 } packed_task;
 

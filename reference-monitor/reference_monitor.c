@@ -1,12 +1,3 @@
-/*
-Blocking Queuing Service (BQS)
-This homework deals with the implementation of a Linux kernel subsystem dealing with thread management.
-The subsystem should implement a blocking FIFO-queuing service. It is based on two system calls:
-1) int goto_sleep(void) used to make a thread sleep at the tail of the queue.
-2) int awake(void) used to awake the thread currently standing at the head of the queue.
-Threads could also be awaken in non-FIFO order because of Posix signals.
-*/
-
 #define EXPORT_SYMTAB
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -827,7 +818,7 @@ void disable_probes()
         kfree(kprobe_array);
 }
 
-//DEFERRED WORK
+//DEFERRED LOGGING
 
 //Collect the data to be logged
 void setup_deferred_work(void){
@@ -879,7 +870,7 @@ void setup_deferred_work(void){
         task->euid = euid;
         task->exe_path = exe_path;
 
-        // Init and chedule the tasklet
+        // Init and schedule the deferred work
         __INIT_WORK(&(task->work), (void *)deferred_log, (unsigned long)(&(task->work)));
         schedule_work(&task->work);
         printk("%s: [INFO] deferred work scheduled\n", MODNAME);
@@ -897,7 +888,6 @@ void deferred_log(unsigned long data){
         char *exe_content;
         int exe_size;
         char exe_hash[HASH_HEX_SIZE];
-        bool exe_available=true;
         packed_work *task;
 
         printk("%s: [INFO] executing deferred work\n", MODNAME);
@@ -915,15 +905,18 @@ void deferred_log(unsigned long data){
         exe_file = filp_open(exe_path, O_RDONLY, 0);
         if (IS_ERR(exe_file)) {
                 printk("%s [ERROR] Can't open exe file", MODNAME);
-                exe_available = false;
+                strncpy(exe_hash, "N/A", HASH_HEX_SIZE-1);
+                exe_hash[HASH_HEX_SIZE] = '\0';
+                goto build_log_row;
         }
         
         //Get the size of the exe file
         exe_size = vfs_llseek(exe_file, 0, SEEK_END);
         if (exe_size < 0) {
                 printk("%s [ERROR] Can't seek exe file", MODNAME);
-                filp_close(exe_file, NULL);
-                exe_available = false;
+                strncpy(exe_hash, "N/A", HASH_HEX_SIZE-1);
+                exe_hash[HASH_HEX_SIZE] = '\0';
+                goto build_log_row;
         }
 
         //Read the content of the exe file
@@ -931,33 +924,32 @@ void deferred_log(unsigned long data){
         exe_content = kmalloc(exe_size + 1, GFP_KERNEL);
         if (!exe_content) {
                 printk("%s [ERROR] Can't allocate memory for exe content", MODNAME);
-                filp_close(exe_file, NULL);
-                exe_available = false;
+                strncpy(exe_hash, "N/A", HASH_HEX_SIZE-1);
+                exe_hash[HASH_HEX_SIZE] = '\0';
+                goto build_log_row;
         }
 
         ret = kernel_read(exe_file, exe_content, exe_size, &pos); 
         if (ret < 0) {
                 printk("%s [ERROR] Can't read exe file", MODNAME);
-                filp_close(exe_file, NULL);
-                kfree(exe_content);
-                exe_available = false;
-        } else{
-                filp_close(exe_file, NULL);
+                strncpy(exe_hash, "N/A", HASH_HEX_SIZE-1);
+                exe_hash[HASH_HEX_SIZE] = '\0';
+                goto build_log_row;
+        } else
                 exe_content[ret] = '\0';
+
+        //Compute the hash of the exe file
+        if (compute_sha256(exe_content, exe_hash) < 0)
+        {
+                printk("%s: [ERROR] could not compute sha256 of exe content\n", MODNAME);
+                strncpy(exe_hash, "N/A", HASH_HEX_SIZE-1);
+                exe_hash[HASH_HEX_SIZE] = '\0';
+                goto build_log_row;
         }
 
-        //Generate the log row
-        if(exe_available){
-                //Compute the hash of the exe file
-                if (compute_sha256(exe_content, exe_hash) < 0)
-                {
-                        printk("%s: [ERROR] could not compute sha256 of exe content\n", MODNAME);
-                        snprintf(log_row, 512, "%d, %d, %d, %d, %s, %s\n", tid, tgid, uid, euid, exe_path, "N/A");
-                }
-                snprintf(log_row, 512, "%d, %d, %d, %d, %s, %s\n", tid, tgid, uid, euid, exe_path, exe_hash);
-        }
-        else
-                snprintf(log_row, 512, "%d, %d, %d, %d, %s, %s\n", tid, tgid, uid, euid, exe_path, "N/A");
+        //Build the log row
+build_log_row:
+        snprintf(log_row, 512, "%d, %d, %d, %d, %s, %s\n", tid, tgid, uid, euid, exe_path, exe_hash);
 
         printk("%s: [INFO] log row: %s\n", MODNAME, log_row);
 
@@ -966,7 +958,10 @@ void deferred_log(unsigned long data){
         if (IS_ERR(log_file))
         {
                 printk("%s [ERROR] Error in opening log file", MODNAME);
-                return;
+                filp_close(exe_file, NULL);
+                kfree(exe_content);
+                kfree(task);
+                
         }
 
         ret = kernel_write(log_file, log_row, strlen(log_row), &log_file->f_pos); //TODO Bloccante vedere se workqueue va bene
@@ -975,6 +970,7 @@ void deferred_log(unsigned long data){
                 printk("%s [ERROR] Error in writing on log file", MODNAME);
         }
 
+        filp_close(exe_file, NULL);
         filp_close(log_file, NULL);
         kfree(exe_content);
         kfree(task);

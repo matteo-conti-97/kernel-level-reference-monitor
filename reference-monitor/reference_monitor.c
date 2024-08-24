@@ -835,7 +835,7 @@ void setup_deferred_work(void){
         struct mm_struct *mm;
         int tid, tgid, uid, euid;
         char *exe_path;
-        packed_task *task;
+        packed_work *task;
         char *buff;
 
         printk("%s: [INFO] setting up deferred work\n", MODNAME);
@@ -864,7 +864,7 @@ void setup_deferred_work(void){
         }
 
         // Schedule hash computation and writing on file in deferred work 
-        task = kmalloc(sizeof(packed_task), GFP_KERNEL);
+        task = kmalloc(sizeof(packed_work), GFP_KERNEL);
         if (task == NULL)
         {
                 printk("%s: [ERROR] tasklet allocation failure\n", MODNAME);
@@ -880,8 +880,8 @@ void setup_deferred_work(void){
         task->exe_path = exe_path;
 
         // Init and chedule the tasklet
-        tasklet_init(&task->tasklet, deferred_log, (unsigned long)task);
-        tasklet_schedule(&task->tasklet);
+        __INIT_WORK(&(task->work), (void *)deferred_log, (unsigned long)(&(task->work)));
+        schedule_work(&task->work);
         printk("%s: [INFO] deferred work scheduled\n", MODNAME);
 }
 
@@ -898,14 +898,17 @@ void deferred_log(unsigned long data){
         int exe_size;
         char exe_hash[HASH_HEX_SIZE];
         bool exe_available=true;
+        packed_work *task;
 
         printk("%s: [INFO] executing deferred work\n", MODNAME);
 
-        tid = ((packed_task*)data)->tid;
-        tgid = ((packed_task*)data)->tgid;
-        uid = ((packed_task*)data)->uid;
-        euid = ((packed_task*)data)->euid;
-        exe_path = ((packed_task*)data)->exe_path;
+        task = container_of((void *)data, packed_work, work);
+
+        tid = task->tid;
+        tgid = task->tgid;
+        uid = task->uid;
+        euid = task->euid;
+        exe_path = task->exe_path;
 
         //Hash computation
         //Open the exe file
@@ -932,7 +935,7 @@ void deferred_log(unsigned long data){
                 exe_available = false;
         }
 
-        ret = kernel_read(exe_file, exe_content, exe_size, &pos);
+        ret = kernel_read(exe_file, exe_content, exe_size, &pos); 
         if (ret < 0) {
                 printk("%s [ERROR] Can't read exe file", MODNAME);
                 filp_close(exe_file, NULL);
@@ -959,14 +962,14 @@ void deferred_log(unsigned long data){
         printk("%s: [INFO] log row: %s\n", MODNAME, log_row);
 
         //Write the log row on the log file
-        log_file = filp_open(LOG_PATH, O_WRONLY, 0644);
+        log_file = filp_open(LOG_PATH, O_WRONLY, 0644); 
         if (IS_ERR(log_file))
         {
                 printk("%s [ERROR] Error in opening log file", MODNAME);
                 return;
         }
 
-        ret = kernel_write(log_file, log_row, strlen(log_row), &log_file->f_pos);
+        ret = kernel_write(log_file, log_row, strlen(log_row), &log_file->f_pos); //TODO Bloccante vedere se workqueue va bene
         if (ret < 0)
         {
                 printk("%s [ERROR] Error in writing on log file", MODNAME);
@@ -974,6 +977,7 @@ void deferred_log(unsigned long data){
 
         filp_close(log_file, NULL);
         kfree(exe_content);
+        kfree(task);
 }
 
 // MODULE INIT AND CLEANUP

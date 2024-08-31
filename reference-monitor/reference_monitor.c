@@ -53,8 +53,6 @@ unsigned long new_sys_call_array[] = {0x0, 0x1, 0x2}; // please set to sys_vtpmo
 // #define HACKED_ENTRIES 2
 int restore[HACKED_ENTRIES] = {[0 ...(HACKED_ENTRIES - 1)] - 1};
 
-#define AUDIT if (1)
-
 // SYSTEM CALLS
 
 // Change reference monitor state
@@ -1023,11 +1021,10 @@ int init_module(void)
                 return GENERIC_ERR;
         }
 
-        AUDIT
-        {
-                printk("%s: received sys_call_table address %px\n", MODNAME, (void *)syscall_table_addr);
-                printk("%s: initializing - hacked entries %d\n", MODNAME, HACKED_ENTRIES);
-        }
+
+        printk("%s: received sys_call_table address %px\n", MODNAME, (void *)syscall_table_addr);
+        printk("%s: initializing - hacked entries %d\n", MODNAME, HACKED_ENTRIES);
+        
 
         new_sys_call_array[0] = (unsigned long)sys_switch_state;
         new_sys_call_array[1] = (unsigned long)sys_add_protected_res;

@@ -30,6 +30,6 @@ int main(int argc, char *argv[]) {
                 return -1;
         }
     }
-    printf("File '%s' truncated", filename);
+    printf("File '%s' truncated\n", filename);
     return 0;
 }

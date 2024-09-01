@@ -763,7 +763,7 @@ int register_probes()
                 }
         }
 
-        printk("%s: [INFO] Kretprobes correctly installed\n", MODNAME);
+        printk("%s: [INFO] probes correctly installed\n", MODNAME);
 
         return ret;
 }

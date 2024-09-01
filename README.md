@@ -1,8 +1,9 @@
 # kernel-level-reference-monitor
 ## Description
-This specification is related to a Linux Kernel Module (LKM) implementing a reference monitor for file protection. The reference monitor can be in one of the following four states:
--OFF, meaning that its operations are currently disabled;\
--ON, meaning that its operations are currently enabled;\
+This specification is related to a Linux Kernel Module (LKM) implementing a reference monitor for file protection. The reference monitor can be in one of the following four states:\
+
+-OFF, meaning that its operations are currently disabled.\
+-ON, meaning that its operations are currently enabled.\
 -REC-ON/REC-OFF, meaning that it can be currently reconfigured (in either ON or OFF mode).\
 The configuration of the reference monitor is based on a set of file system paths. Each path corresponds to a file/dir that cannot be currently opened in write mode. Hence, any attempt to write-open the path needs to return an error, independently of the user-id that attempts the open operation.\
 
@@ -12,12 +13,12 @@ It is up to the software designer to determine if the above states ON/OFF/REC-ON
 
 In addition to the above specifics, the project should also include the realization of a file system where a single append-only file should record the following tuple of data (per line of the file) each time an attempt to write-open a protected file system path is attempted:\
 
--the process TGID\
--the thread ID\
--the user-id\
--the effective user-id\
--the program path-name that is currently attempting the open\
--a cryptographic hash of the program file content\
+-the process TGID.\
+-the thread ID.\
+-the user-id.\
+-the effective user-id.\
+-the program path-name that is currently attempting the open.\
+-a cryptographic hash of the program file content.\
 
 The the computation of the cryptographic hash and the writing of the above tuple should be carried in deferred work.
 

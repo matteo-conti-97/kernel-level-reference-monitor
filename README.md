@@ -1,13 +1,16 @@
 # kernel-level-reference-monitor
+
+
+# Manual
 We call the root directory of the project $ROOT_DIR.
 
-# How to build and mount kernel modules:
+## How to build and mount kernel modules:
 -To build open a shell in $ROOT_DIR and execute the cmd 'bash build'.\
 -To clean open a shell in $ROOT_DIR and execute the cmd 'bash clean'.\
 -To mount open a shell in $ROOT_DIR and execute the cmd 'sudo bash mount < passwd >' where passwd is the password that will be requested when attempting to reconfigure the reference monitor.\
 -To unmount open a shell in $ROOT_DIR and execute the cmd 'sudo bash unmount',
 
-# How to use:
+## How to use:
 -To switch the reference monitor state open a open a shell in $ROOT_DIR/test and execute the cmd 'sudo ./switch <state> < passwd >' the possible states are 0, 1, 2, 3 which corresponds respectively to ON, OFF, REC_ON, REC_OFF.\
 -To add a protected resource (file or directories) open a shell in $ROOT_DIR/test and execute the cmd 'sudo ./insert_resource <res_path> < passwd >', reference monitor state must be REC_ON or REC_OFF (when mounted default state is REC_ON).\
 -To remove a protected resource (file or directories) open a shell in $ROOT_DIR/test and execute the cmd 'sudo ./remove_resource <res_path> < passwd >', reference monitor state must be REC_ON or REC_OFF (when mounted default state is REC_ON).\

@@ -69,14 +69,14 @@ char *get_path_name(struct dentry *dentry){
     // Allocate memory for the buffer
     buff = kmalloc(MAX_PATH_SIZE, GFP_KERNEL);
     if (!buff) {
-        pr_err("Failed to allocate memory for path buffer\n");
+        printk("Failed to allocate memory for path buffer\n");
         return NULL;
     }
 
     // Get the path
     path = dentry_path_raw(dentry, buff, MAX_PATH_SIZE);
     if (IS_ERR(path)) {
-        pr_err("Error getting dentry path\n");
+        printk("Error getting dentry path\n");
         kfree(buff);
         return NULL;
     }

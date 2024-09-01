@@ -739,7 +739,8 @@ int security_inode_symlink_handler(struct kretprobe_instance *prob_inst, struct 
 // PROBES SETUP AND REGISTRATION
 void setup_probe(struct kretprobe *probe, char *symbol, kretprobe_handler_t entry_handler, kretprobe_handler_t ret_handler)
 {
-        printk("%s: [INFO] Setting up probe for symbol %s\n", MODNAME, symbol);
+        printk("%s: [INFO] Setting up probes\n", MODNAME);
+        //printk("%s: [INFO] Setting up probe for symbol %s\n", MODNAME, symbol);
         probe->kp.symbol_name = symbol;
         probe->handler = (kretprobe_handler_t)ret_handler;
         probe->entry_handler = entry_handler;

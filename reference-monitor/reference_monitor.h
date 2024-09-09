@@ -1,6 +1,7 @@
 #include <linux/spinlock.h>
 #include <linux/string.h>
 #include <linux/rculist.h>
+#include "error_codes.h"
 
 #define PASSWD_LEN 128
 #define HASH_LEN 32
@@ -19,9 +20,10 @@ typedef struct protected_resource {
 } protected_resource;
 
 protected_resource *create_protected_resource(char *res_path);
-void add_new_protected_resource(reference_monitor *ref_mon, protected_resource *new_protected_resource);
+int add_new_protected_resource(reference_monitor *ref_mon, protected_resource *new_protected_resource);
 int remove_protected_resource(reference_monitor *ref_mon, char *res_path);
 void print_protected_resources(reference_monitor *ref_mon);
+bool rcu_check_protected_resource(reference_monitor *ref_mon, const char *res_path);
 bool check_protected_resource(reference_monitor *ref_mon, const char *res_path);
 
 protected_resource *create_protected_resource(char *res_path){
@@ -42,16 +44,26 @@ protected_resource *create_protected_resource(char *res_path){
 }
 
 // Function to insert a node at the beginning of the list
-void add_new_protected_resource(reference_monitor *rm, protected_resource *new_resource) {
+int add_new_protected_resource(reference_monitor *rm, protected_resource *new_resource) {
     protected_resource *old_head;
+    bool is_protected = false;
 
     //Insert the new protected resource at the beginning of the list
     spin_lock(&rm->lock);
+
+    is_protected = check_protected_resource(rm, new_resource->path);
+    if (is_protected) {
+        spin_unlock(&rm->lock);
+        return RES_ALREADY_PROTECTED_ERR;
+    }
+
     old_head = rcu_dereference(rm->protected_resource_list_head);
     new_resource->next = old_head;
     rcu_assign_pointer(rm->protected_resource_list_head, new_resource);
     spin_unlock(&rm->lock);
+    return SUCCESS;
 }
+
 
 // Function to remove a node from the list
 int remove_protected_resource(reference_monitor *rm, char *target) {
@@ -59,8 +71,7 @@ int remove_protected_resource(reference_monitor *rm, char *target) {
     protected_resource *curr;
     spin_lock(&rm->lock);
 
-    rcu_read_lock();
-    curr = rcu_dereference(rm->protected_resource_list_head);
+    curr = rm->protected_resource_list_head;
     while (curr != NULL) {
         if (strcmp(curr->path, target) == 0) {
             if (prev) {
@@ -73,15 +84,13 @@ int remove_protected_resource(reference_monitor *rm, char *target) {
            
             // Free the node after RCU grace period
             kfree(curr);
-            return 0;
+            return SUCCESS;
         }
         prev = curr;
-        curr = rcu_dereference(curr->next);
+        curr = curr->next;
     }
     spin_unlock(&rm->lock);
-    rcu_read_unlock();
-    return -1;
-
+    return RES_NOT_PROTECTED_ERR;
 }
 
 void print_protected_resources(reference_monitor *rm) {
@@ -97,17 +106,15 @@ void print_protected_resources(reference_monitor *rm) {
 }
 
 // Function to check if a resource is protected
-bool check_protected_resource(reference_monitor *rm, const char *res_path) {
+bool rcu_check_protected_resource(reference_monitor *rm, const char *res_path) {
     protected_resource *curr;
-    int prefix_len;
 
     rcu_read_lock();
     curr = rcu_dereference(rm->protected_resource_list_head);
     while (curr != NULL) {
 
-        prefix_len = strlen(curr->path);
         //If the resource is found in the list
-        if (strncmp(res_path, curr->path, prefix_len) == 0) {
+        if (strcmp(res_path, curr->path) == 0) {
             rcu_read_unlock();
             return true;
         }
@@ -115,6 +122,24 @@ bool check_protected_resource(reference_monitor *rm, const char *res_path) {
         curr = rcu_dereference(curr->next);
     }
     rcu_read_unlock();
+    return false;
+
+}
+
+// Function to check if a resource is protected
+bool check_protected_resource(reference_monitor *rm, const char *res_path) {
+    protected_resource *curr;
+
+    curr = rm->protected_resource_list_head;
+    while (curr != NULL) {
+
+        //If the resource is found in the list
+        if (strcmp(res_path, curr->path) == 0) {
+            return true;
+        }
+
+        curr = curr->next;
+    }
     return false;
 
 }

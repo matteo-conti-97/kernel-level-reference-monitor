@@ -88,11 +88,15 @@ asmlinkage long sys_switch_state(int state, char *passwd)
                 return GENERIC_ERR;
         }
 
+        spin_lock(&ref_mon.lock);
+
         if (!compare_hashes(hash_passwd, ref_mon.hash_passwd, HASH_HEX_SIZE))
         {
                 printk("%s: [ERROR] given password does not match\n", MODNAME);
                 return PASSWD_MISMATCH_ERR;
         }
+
+        spin_unlock(&ref_mon.lock);
 
         // Switch state
         switch (state)
@@ -160,6 +164,7 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
 {
 #endif
         char *hash_passwd;
+        int res;
         protected_resource *new_protected_resource;
         printk("%s: [INFO] add_protected_res syscall called\n", MODNAME);
 
@@ -184,11 +189,14 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
                 return GENERIC_ERR;
         }
 
+        spin_lock(&ref_mon.lock);
+
         if (!compare_hashes(hash_passwd, ref_mon.hash_passwd, HASH_HEX_SIZE))
         {
                 printk("%s: [ERROR] given password does not match\n", MODNAME);
                 return PASSWD_MISMATCH_ERR;
         }
+
 
         // Check if reference monitor is in reconfiguration mode
         if ((ref_mon.state != REC_ON) && (ref_mon.state != REC_OFF))
@@ -196,6 +204,8 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
                 printk("%s: [ERROR] reference monitor is not in reconfiguration mode\n", MODNAME);
                 return OP_NOT_PERMITTED_ERR;
         }
+
+        spin_unlock(&ref_mon.lock);
 
         // Create the new protected resource
         new_protected_resource = create_protected_resource(res_path);
@@ -206,7 +216,12 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
         }
 
         // Add the new protected resource to the list
-        add_new_protected_resource(&ref_mon, new_protected_resource);
+        res = add_new_protected_resource(&ref_mon, new_protected_resource);
+        if(res == RES_ALREADY_PROTECTED_ERR){
+                printk("%s: [ERROR] resource already protected\n", MODNAME);
+                kfree(new_protected_resource);
+                return RES_ALREADY_PROTECTED_ERR;
+        }
         print_protected_resources(&ref_mon);
 
         return SUCCESS;
@@ -220,7 +235,7 @@ __SYSCALL_DEFINEx(2, _rm_protected_res, char *, res_path, char *, passwd)
 asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
 {
 #endif
-        int i = 0;
+        int res;
         char *hash_passwd;
         printk("%s: [INFO] rm_protected_res syscall called\n", MODNAME);
 
@@ -245,11 +260,15 @@ asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
                 return GENERIC_ERR;
         }
 
+        spin_lock(&ref_mon.lock);
+
         if (!compare_hashes(hash_passwd, ref_mon.hash_passwd, HASH_HEX_SIZE))
         {
                 printk("%s: [ERROR] given password does not match\n", MODNAME);
                 return PASSWD_MISMATCH_ERR;
         }
+
+        
 
         // Check if reference monitor is in reconfiguration mode
         if ((ref_mon.state != REC_ON) && (ref_mon.state != REC_OFF))
@@ -258,17 +277,13 @@ asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
                 return OP_NOT_PERMITTED_ERR;
         }
 
-        // Lock the reference monitor
+        spin_unlock(&ref_mon.lock);
 
-        while (remove_protected_resource(&ref_mon, res_path) >= 0)
-                i++;
-
-        if (i == 0)
-        {
+        res = remove_protected_resource(&ref_mon, res_path);
+        if(res == RES_NOT_PROTECTED_ERR){
                 printk("%s: [ERROR] resource not protected\n", MODNAME);
                 return RES_NOT_PROTECTED_ERR;
         }
-        printk("%s: [INFO] removed protected resource %d times\n", MODNAME, i);
         print_protected_resources(&ref_mon);
 
         return SUCCESS;
@@ -326,6 +341,7 @@ int ret_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
         return 0;
 }
 
+//TODO MODIFICARE GLI HANDLER IN MODO CHE LA ROBA CHE MODIFICA IL CONTENUTO DIRECTORY PASSI SOLO IL PREFIX E NON TUTTO IL PATH E LA ROBA CHE MODIFICA FILE PASSI TUTTO
 int vfs_open_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
 {
         struct path *path;
@@ -358,7 +374,7 @@ int vfs_open_handler(struct kretprobe_instance *prob_inst, struct pt_regs *regs)
         if (flags & O_WRONLY || flags & O_RDWR || flags & O_CREAT || flags & O_APPEND || flags & O_TRUNC)
         {
                 // Check if file is protected
-                if (check_protected_resource(&ref_mon, pathname))
+                if (rcu_check_protected_resource(&ref_mon, pathname))
                 {
                         printk("%s: [ERROR] Blocked open access to protected resource %s\n", MODNAME, pathname);
                         setup_deferred_work();
@@ -395,7 +411,7 @@ int security_path_truncate_handler(struct kretprobe_instance *prob_inst, struct 
 
  
         // Check if file is protected
-        if (check_protected_resource(&ref_mon, pathname))
+        if (rcu_check_protected_resource(&ref_mon, pathname))
         {
                 printk("%s: [ERROR] Blocked truncate access to protected resource %s\n", MODNAME, pathname);
                 setup_deferred_work();
@@ -445,15 +461,41 @@ int security_path_rename_handler(struct kretprobe_instance *prob_inst, struct pt
 
  
         // Check if old res is protected
-        if (check_protected_resource(&ref_mon, old_pathname))
+        if (rcu_check_protected_resource(&ref_mon, old_pathname))
         {
                 printk("%s: [ERROR] Blocked rename access to protected resource %s\n", MODNAME, old_pathname);
                 setup_deferred_work();
                 return 0;
         }
 
-        // Check if new res is protected
-        if (check_protected_resource(&ref_mon, new_pathname))
+        // Check if new res is protected for overwriting
+        if (rcu_check_protected_resource(&ref_mon, new_pathname))
+        {
+                printk("%s: [ERROR] Blocked rename access to protected resource %s\n", MODNAME, new_pathname);
+                setup_deferred_work();
+                return 0;
+        }
+
+        // Check if old res is a protected resource 
+        if (rcu_check_protected_resource(&ref_mon, old_pathname))
+        {
+                printk("%s: [ERROR] Blocked rename access to protected resource %s\n", MODNAME, old_pathname);
+                setup_deferred_work();
+                return 0;
+        }
+
+        //Check if old res is in a protected directory
+        get_prefix(old_pathname);
+        if (rcu_check_protected_resource(&ref_mon, old_pathname))
+        {
+                printk("%s: [ERROR] Blocked rename access to protected resource %s\n", MODNAME, old_pathname);
+                setup_deferred_work();
+                return 0;
+        }
+
+        // Check if new res is in a protected directory
+        get_prefix(new_pathname);
+        if (rcu_check_protected_resource(&ref_mon, new_pathname))
         {
                 printk("%s: [ERROR] Blocked rename access to protected resource %s\n", MODNAME, new_pathname);
                 setup_deferred_work();
@@ -486,7 +528,8 @@ int security_inode_mkdir_handler(struct kretprobe_instance *prob_inst, struct pt
         }
 
         // Check if file is protected
-        if (check_protected_resource(&ref_mon, pathname))
+        get_prefix(pathname);
+        if (rcu_check_protected_resource(&ref_mon, pathname))
         {
                 printk("%s: [ERROR] Blocked mkdir access to protected resource %s\n", MODNAME, pathname);
                 setup_deferred_work();
@@ -519,7 +562,8 @@ int security_path_mknod_handler(struct kretprobe_instance *prob_inst, struct pt_
         }
 
         // Check if file is protected
-        if (check_protected_resource(&ref_mon, pathname))
+        get_prefix(pathname);
+        if (rcu_check_protected_resource(&ref_mon, pathname))
         {
                 printk("%s: [ERROR] Blocked mknod access to protected resource %s\n", MODNAME, pathname);
                 setup_deferred_work();
@@ -552,7 +596,16 @@ int security_inode_rmdir_handler(struct kretprobe_instance *prob_inst, struct pt
         }
 
         // Check if file is protected
-        if (check_protected_resource(&ref_mon, pathname))
+        if (rcu_check_protected_resource(&ref_mon, pathname))
+        {
+                printk("%s: [ERROR] Blocked rmdir access to protected resource %s\n", MODNAME, pathname);
+                setup_deferred_work();
+                return 0;
+        }
+
+        // Check if file is in a protected directory
+        get_prefix(pathname);
+        if (rcu_check_protected_resource(&ref_mon, pathname))
         {
                 printk("%s: [ERROR] Blocked rmdir access to protected resource %s\n", MODNAME, pathname);
                 setup_deferred_work();
@@ -584,8 +637,17 @@ int security_inode_create_handler(struct kretprobe_instance *prob_inst, struct p
                 return 0;
         }
 
-        // Check if file is protected
-        if (check_protected_resource(&ref_mon, pathname))
+        // Check if attempting to create protected file
+        if (rcu_check_protected_resource(&ref_mon, pathname))
+        {
+                printk("%s: [ERROR] Blocked create access to protected resource %s\n", MODNAME, pathname);
+                setup_deferred_work();
+                return 0;
+        }
+
+        // Check if attempting to create file in a protected directory
+        get_prefix(pathname);
+        if (rcu_check_protected_resource(&ref_mon, pathname))
         {
                 printk("%s: [ERROR] Blocked create access to protected resource %s\n", MODNAME, pathname);
                 setup_deferred_work();
@@ -635,7 +697,7 @@ int security_inode_link_handler(struct kretprobe_instance *prob_inst, struct pt_
         }
 
         // Check if old path is protected
-        if (check_protected_resource(&ref_mon, old_pathname))
+        if (rcu_check_protected_resource(&ref_mon, old_pathname))
         {
                 printk("%s: [ERROR] Blocked link access to protected resource %s\n", MODNAME, old_pathname);
                 setup_deferred_work();
@@ -643,7 +705,16 @@ int security_inode_link_handler(struct kretprobe_instance *prob_inst, struct pt_
         }
 
         // Check if new path is protected
-        if (check_protected_resource(&ref_mon, new_pathname))
+        if (rcu_check_protected_resource(&ref_mon, new_pathname))
+        {
+                printk("%s: [ERROR] Blocked link access to protected resource %s\n", MODNAME, new_pathname);
+                setup_deferred_work();
+                return 0;
+        }
+
+        //check if new path is in a protected directory
+        get_prefix(new_pathname);
+        if (rcu_check_protected_resource(&ref_mon, new_pathname))
         {
                 printk("%s: [ERROR] Blocked link access to protected resource %s\n", MODNAME, new_pathname);
                 setup_deferred_work();
@@ -677,7 +748,16 @@ int security_inode_unlink_handler(struct kretprobe_instance *prob_inst, struct p
         }
 
         // Check if file is protected
-        if (check_protected_resource(&ref_mon, pathname))
+        if (rcu_check_protected_resource(&ref_mon, pathname))
+        {
+                printk("%s: [ERROR] Blocked unlink access to protected resource %s\n", MODNAME, pathname);
+                setup_deferred_work();
+                return 0;
+        }
+
+        // Check if file is in a protected directory
+        get_prefix(pathname);
+        if (rcu_check_protected_resource(&ref_mon, pathname))
         {
                 printk("%s: [ERROR] Blocked unlink access to protected resource %s\n", MODNAME, pathname);
                 setup_deferred_work();
@@ -716,7 +796,7 @@ int security_inode_symlink_handler(struct kretprobe_instance *prob_inst, struct 
         }
 
         // Check if old path is protected
-        if (check_protected_resource(&ref_mon, old_pathname))
+        if (rcu_check_protected_resource(&ref_mon, old_pathname))
         {
                 printk("%s: [ERROR] Blocked symlink access to protected resource %s\n", MODNAME, old_pathname);
                 setup_deferred_work();
@@ -724,7 +804,16 @@ int security_inode_symlink_handler(struct kretprobe_instance *prob_inst, struct 
         }
 
         // Check if new path is protected
-        if (check_protected_resource(&ref_mon, new_pathname))
+        if (rcu_check_protected_resource(&ref_mon, new_pathname))
+        {
+                printk("%s: [ERROR] Blocked symlink access to protected resource %s\n", MODNAME, new_pathname);
+                setup_deferred_work();
+                return 0;
+        }
+
+        //check if new path is in a protected directory
+        get_prefix(new_pathname);
+        if (rcu_check_protected_resource(&ref_mon, new_pathname))
         {
                 printk("%s: [ERROR] Blocked symlink access to protected resource %s\n", MODNAME, new_pathname);
                 setup_deferred_work();
@@ -739,8 +828,7 @@ int security_inode_symlink_handler(struct kretprobe_instance *prob_inst, struct 
 // PROBES SETUP AND REGISTRATION
 void setup_probe(struct kretprobe *probe, char *symbol, kretprobe_handler_t entry_handler, kretprobe_handler_t ret_handler)
 {
-        printk("%s: [INFO] Setting up probes\n", MODNAME);
-        //printk("%s: [INFO] Setting up probe for symbol %s\n", MODNAME, symbol);
+        printk("%s: [INFO] Setting up probe for symbol %s\n", MODNAME, symbol);
         probe->kp.symbol_name = symbol;
         probe->handler = (kretprobe_handler_t)ret_handler;
         probe->entry_handler = entry_handler;
@@ -763,7 +851,7 @@ int register_probes()
                 }
         }
 
-        printk("%s: [INFO] probes correctly installed\n", MODNAME);
+        printk("%s: [INFO] Kretprobes correctly installed\n", MODNAME);
 
         return ret;
 }

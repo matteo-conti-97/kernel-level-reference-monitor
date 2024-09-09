@@ -22,8 +22,8 @@ void check_add(char *path, char *passwd){
         case -PASSWD_MISMATCH_ERR:
             printf("Password mismatch\n");
             break;
-        case -INVALID_STATE_ERR:
-            printf("Invalid state\n");
+        case -RES_ALREADY_PROTECTED_ERR:
+            printf("Resource already protected\n");
             break;
         default:
             printf("Unknown error\n");

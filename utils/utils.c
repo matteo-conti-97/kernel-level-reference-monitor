@@ -69,14 +69,14 @@ char *get_path_name(struct dentry *dentry){
     // Allocate memory for the buffer
     buff = kmalloc(MAX_PATH_SIZE, GFP_KERNEL);
     if (!buff) {
-        printk("Failed to allocate memory for path buffer\n");
+        pr_err("Failed to allocate memory for path buffer\n");
         return NULL;
     }
 
     // Get the path
     path = dentry_path_raw(dentry, buff, MAX_PATH_SIZE);
     if (IS_ERR(path)) {
-        printk("Error getting dentry path\n");
+        pr_err("Error getting dentry path\n");
         kfree(buff);
         return NULL;
     }
@@ -90,4 +90,13 @@ char *get_path_name(struct dentry *dentry){
     kfree(path);
 
     return res;
+}
+
+void get_prefix(const char *path) {
+    // Find the last occurrence of '/'
+    char *last_slash = strrchr(path, '/');
+    if (last_slash != NULL) {
+        // Null terminate the string at the last '/'
+        *last_slash = '\0';
+    }
 }

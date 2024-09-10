@@ -308,7 +308,7 @@ char *symbol_names[KPROBES_SIZE] = {
     "security_inode_mkdir",
     "security_path_mknod",
     "security_inode_rmdir",
-    "security_inode_create",
+    "security_inode_create", 
     "security_inode_link",
     "security_inode_unlink",
     "security_inode_symlink"};
@@ -476,14 +476,6 @@ int security_path_rename_handler(struct kretprobe_instance *prob_inst, struct pt
                 return 0;
         }
 
-        // Check if old res is a protected resource 
-        if (rcu_check_protected_resource(&ref_mon, old_pathname))
-        {
-                printk("%s: [ERROR] Blocked rename access to protected resource %s\n", MODNAME, old_pathname);
-                setup_deferred_work();
-                return 0;
-        }
-
         //Check if old res is in a protected directory
         get_prefix(old_pathname);
         if (rcu_check_protected_resource(&ref_mon, old_pathname))
@@ -527,7 +519,7 @@ int security_inode_mkdir_handler(struct kretprobe_instance *prob_inst, struct pt
                 return 0;
         }
 
-        // Check if file is protected
+        // Check if is in a protected directory
         get_prefix(pathname);
         if (rcu_check_protected_resource(&ref_mon, pathname))
         {
@@ -544,9 +536,9 @@ int security_path_mknod_handler(struct kretprobe_instance *prob_inst, struct pt_
         struct dentry *dentry;
         char *buff;
         const char *pathname;
+        umode_t mode;
 
         dentry = (struct dentry *)regs->si;
-        
 
         // Get the dir path
         buff = (char *)kmalloc(GFP_KERNEL, MAX_FILENAME_LEN);
@@ -561,7 +553,7 @@ int security_path_mknod_handler(struct kretprobe_instance *prob_inst, struct pt_
                 return 0;
         }
 
-        // Check if file is protected
+        // Check if is in a protected directory
         get_prefix(pathname);
         if (rcu_check_protected_resource(&ref_mon, pathname))
         {
@@ -595,7 +587,7 @@ int security_inode_rmdir_handler(struct kretprobe_instance *prob_inst, struct pt
                 return 0;
         }
 
-        // Check if file is protected
+        // Check if directory is protected
         if (rcu_check_protected_resource(&ref_mon, pathname))
         {
                 printk("%s: [ERROR] Blocked rmdir access to protected resource %s\n", MODNAME, pathname);
@@ -603,7 +595,7 @@ int security_inode_rmdir_handler(struct kretprobe_instance *prob_inst, struct pt
                 return 0;
         }
 
-        // Check if file is in a protected directory
+        // Check if directory is in a protected directory
         get_prefix(pathname);
         if (rcu_check_protected_resource(&ref_mon, pathname))
         {
@@ -637,7 +629,7 @@ int security_inode_create_handler(struct kretprobe_instance *prob_inst, struct p
                 return 0;
         }
 
-        // Check if attempting to create protected file
+        // Check if attempting to overwrite protected file
         if (rcu_check_protected_resource(&ref_mon, pathname))
         {
                 printk("%s: [ERROR] Blocked create access to protected resource %s\n", MODNAME, pathname);

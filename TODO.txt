@@ -5,3 +5,6 @@
 -Implement kernel probe to reject access to protected resources - DONE
 -Implement single file filesystem for logging ->DONE
 -Implement logging as deferred work in kprobes -> DONE inizialmente provato con tasklet ma la kernel read e write sono bloccanti quindi non va bene, passato a work queue
+
+-Implement syscall to change password and to get list of protected resources
+-Implement master copy

@@ -36,8 +36,6 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Matteo Conti <matteo.conti.97@students.uniroma2.eu>");
 MODULE_DESCRIPTION("This module implements a reference monitor which offers a set of system calls to manage protected resources and a set of kernel probes to block write operations on protected resources");
 
-#define MODNAME "REFERENCE_MONITOR"
-
 unsigned long syscall_table_addr = 0x0;
 module_param(syscall_table_addr, ulong, 0660);
 
@@ -536,7 +534,6 @@ int security_path_mknod_handler(struct kretprobe_instance *prob_inst, struct pt_
         struct dentry *dentry;
         char *buff;
         const char *pathname;
-        umode_t mode;
 
         dentry = (struct dentry *)regs->si;
 

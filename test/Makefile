@@ -14,6 +14,7 @@ build:
 	gcc test_link.c -o test_link
 	gcc test_symlink.c -o test_symlink
 	gcc test_unlink.c -o test_unlink
+	gcc change_passwd.c -o change_passwd
 
 clean:
-	rm -f insert_resource remove_resource switch_state test_insert_remove test_open test_state_transition test_truncate test_rename test_mkdir test_rmdir test_mknod test_create test_symlink test_link test_unlink 
+	rm -f insert_resource remove_resource switch_state test_insert_remove test_open test_state_transition test_truncate test_rename test_mkdir test_rmdir test_mknod test_create test_symlink test_link test_unlink change_passwd

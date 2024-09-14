@@ -46,7 +46,7 @@ reference_monitor ref_mon;
 
 unsigned long the_ni_syscall;
 
-unsigned long new_sys_call_array[] = {0x0, 0x1, 0x2}; // please set to sys_vtpmo at startup
+unsigned long new_sys_call_array[] = {0x0, 0x1, 0x2, 0x3}; // please set to sys_vtpmo at startup
 #define HACKED_ENTRIES (int)(sizeof(new_sys_call_array) / sizeof(unsigned long))
 // #define HACKED_ENTRIES 2
 int restore[HACKED_ENTRIES] = {[0 ...(HACKED_ENTRIES - 1)] - 1};
@@ -91,6 +91,7 @@ asmlinkage long sys_switch_state(int state, char *passwd)
         if (!compare_hashes(hash_passwd, ref_mon.hash_passwd, HASH_HEX_SIZE))
         {
                 printk("%s: [ERROR] given password does not match\n", MODNAME);
+                spin_unlock(&ref_mon.lock);
                 return PASSWD_MISMATCH_ERR;
         }
 
@@ -192,6 +193,7 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
         if (!compare_hashes(hash_passwd, ref_mon.hash_passwd, HASH_HEX_SIZE))
         {
                 printk("%s: [ERROR] given password does not match\n", MODNAME);
+                spin_unlock(&ref_mon.lock);
                 return PASSWD_MISMATCH_ERR;
         }
 
@@ -200,6 +202,7 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
         if ((ref_mon.state != REC_ON) && (ref_mon.state != REC_OFF))
         {
                 printk("%s: [ERROR] reference monitor is not in reconfiguration mode\n", MODNAME);
+                spin_unlock(&ref_mon.lock);
                 return OP_NOT_PERMITTED_ERR;
         }
 
@@ -263,6 +266,7 @@ asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
         if (!compare_hashes(hash_passwd, ref_mon.hash_passwd, HASH_HEX_SIZE))
         {
                 printk("%s: [ERROR] given password does not match\n", MODNAME);
+                spin_unlock(&ref_mon.lock);
                 return PASSWD_MISMATCH_ERR;
         }
 
@@ -272,6 +276,7 @@ asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
         if ((ref_mon.state != REC_ON) && (ref_mon.state != REC_OFF))
         {
                 printk("%s: [ERROR] reference monitor is not in reconfiguration mode\n", MODNAME);
+                spin_unlock(&ref_mon.lock);
                 return OP_NOT_PERMITTED_ERR;
         }
 
@@ -287,11 +292,76 @@ asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
         return SUCCESS;
 }
 
+// Change reference monitor password
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
+__SYSCALL_DEFINEx(2, _change_passwd, char *, new_passwd, char *, old_passwd)
+{
+#else
+asmlinkage long sys_change_passwd(char *new_passwd, char *old_passwd)
+{
+#endif
+        char *hash_passwd;
+        printk("%s: [INFO] change_passwd syscall called\n", MODNAME);
+
+        // Check effective user id to be root
+        if (!uid_eq(current_euid(), GLOBAL_ROOT_UID))
+        {
+                printk("%s: [ERROR] only user root can change the reference monitor password\n", MODNAME);
+                return OP_NOT_PERMITTED_ERR;
+        }
+
+        // Check password hash
+        hash_passwd = kmalloc(HASH_HEX_SIZE, GFP_KERNEL);
+        if (hash_passwd == NULL)
+        {
+                printk("%s: [ERROR] could not allocate memory for password hash\n", MODNAME);
+                return -ENOMEM;
+        }
+
+        if (compute_sha256(old_passwd, hash_passwd) < 0)
+        {
+                printk("%s: [ERROR] could not compute sha256 of given password\n", MODNAME);
+                return GENERIC_ERR;
+        }
+
+        spin_lock(&ref_mon.lock);
+
+        if (!compare_hashes(hash_passwd, ref_mon.hash_passwd, HASH_HEX_SIZE))
+        {
+                printk("%s: [ERROR] given password does not match\n", MODNAME);
+                spin_unlock(&ref_mon.lock);
+                return PASSWD_MISMATCH_ERR;
+        }
+
+        
+
+        // Check if reference monitor is in reconfiguration mode
+        if ((ref_mon.state != REC_ON) && (ref_mon.state != REC_OFF))
+        {
+                printk("%s: [ERROR] reference monitor is not in reconfiguration mode\n", MODNAME);
+                spin_unlock(&ref_mon.lock);
+                return OP_NOT_PERMITTED_ERR;
+        }
+
+        if (compute_sha256(new_passwd, ref_mon.hash_passwd) < 0)
+        {
+                printk("%s: [ERROR] could not compute sha256 of password\n", MODNAME);
+                spin_unlock(&ref_mon.lock);
+                return GENERIC_ERR;
+        }
+
+        spin_unlock(&ref_mon.lock);
+
+        return SUCCESS;
+}
+
+
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
 long sys_switch_state = (unsigned long)__x64_sys_switch_state;
 long sys_add_protected_res = (unsigned long)__x64_sys_add_protected_res;
 long sys_rm_protected_res = (unsigned long)__x64_sys_rm_protected_res;
+long sys_change_passwd = (unsigned long)__x64_sys_change_passwd;
 #else
 #endif
 
@@ -762,10 +832,33 @@ int security_inode_symlink_handler(struct kretprobe_instance *prob_inst, struct 
         char *buff;
         const char *old_pathname;
         const char *new_pathname;
+        char *old_full_pathname;
+        char *buf;
+        struct path path;
 
         // Get the old path
         
         old_pathname = (const char *)regs->dx;
+        // Resolve the relative path to a struct path
+        if (kern_path(old_pathname, LOOKUP_FOLLOW, &path)) {
+            printk("%s: [ERROR] could not resolve old path\n", MODNAME);
+            return 0;
+        }
+
+        // Allocate buffer for the absolute path
+        buf = kmalloc(GFP_KERNEL, MAX_FILENAME_LEN);
+        if (!buf) {
+            printk("%s: [ERROR] Failed to allocate memory.\n", MODNAME);
+            return 0;
+        }
+
+        // Get the absolute path from the struct path
+        old_full_pathname = dentry_path_raw(path.dentry, buf, MAX_FILENAME_LEN);
+        if (IS_ERR(old_full_pathname)) {
+            printk("%s: [ERROR] Failed to get the absolute path.\n", MODNAME);
+            kfree(buf);
+            return 0;
+        }
 
 
        // Get the new path
@@ -774,6 +867,7 @@ int security_inode_symlink_handler(struct kretprobe_instance *prob_inst, struct 
         buff = (char *)kmalloc(GFP_KERNEL, MAX_FILENAME_LEN);
         if (!buff) {
                 printk("%s: [ERROR] could not allocate memory for buffer\n", MODNAME);
+                kfree(buf);
                 return 0;
         }
         
@@ -781,14 +875,20 @@ int security_inode_symlink_handler(struct kretprobe_instance *prob_inst, struct 
         if (IS_ERR(new_pathname)) {
                 printk("%s: [ERROR] could not get path from dentry\n", MODNAME);
                 kfree(buff);
+                kfree(buf);
                 return 0;
         }
+        printk("OLD PATH NAME: %s\n", old_pathname);
+        printk("OLD FULLPATH NAME: %s\n", old_full_pathname);
+        printk("NEW PATH NAME: %s\n", new_pathname);
 
         // Check if old path is protected
-        if (rcu_check_protected_resource(&ref_mon, old_pathname))
+        if (rcu_check_protected_resource(&ref_mon, old_full_pathname))
         {
-                printk("%s: [ERROR] Blocked symlink access to protected resource %s\n", MODNAME, old_pathname);
+                printk("%s: [ERROR] Blocked symlink access to protected resource %s\n", MODNAME, old_full_pathname);
                 setup_deferred_work();
+                kfree(buff);
+                kfree(buf);
                 return 0;
         }
 
@@ -797,6 +897,8 @@ int security_inode_symlink_handler(struct kretprobe_instance *prob_inst, struct 
         {
                 printk("%s: [ERROR] Blocked symlink access to protected resource %s\n", MODNAME, new_pathname);
                 setup_deferred_work();
+                kfree(buff);
+                kfree(buf);
                 return 0;
         }
 
@@ -806,9 +908,13 @@ int security_inode_symlink_handler(struct kretprobe_instance *prob_inst, struct 
         {
                 printk("%s: [ERROR] Blocked symlink access to protected resource %s\n", MODNAME, new_pathname);
                 setup_deferred_work();
+                kfree(buff);
+                kfree(buf);
                 return 0;
         }
 
+        kfree(buff);
+        kfree(buf);
         
         return 1;
 }
@@ -1107,6 +1213,7 @@ int init_module(void)
         new_sys_call_array[0] = (unsigned long)sys_switch_state;
         new_sys_call_array[1] = (unsigned long)sys_add_protected_res;
         new_sys_call_array[2] = (unsigned long)sys_rm_protected_res;
+        new_sys_call_array[3] = (unsigned long)sys_change_passwd;
 
         ret = get_entries(restore, HACKED_ENTRIES, (unsigned long *)syscall_table_addr, &the_ni_syscall);
 

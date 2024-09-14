@@ -142,7 +142,6 @@ int remove_protected_resource(reference_monitor *rm, char *target) {
             }
             spin_unlock(&rm->lock);
             synchronize_rcu(); // Wait for ongoing RCU readers to finish
-           
             // Free the node after RCU grace period
             kfree(curr);
             kfree(buf);

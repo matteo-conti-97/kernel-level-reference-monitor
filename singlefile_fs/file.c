@@ -84,7 +84,7 @@ ssize_t onefilefs_write(struct kiocb *iocb, struct iov_iter *from)
     file = iocb->ki_filp;
     the_inode = file->f_inode;
     offset = file->f_pos;
-    file_size = i_size_read(the_inode);
+    file_size = i_size_read(the_inode); //TODO Piuttosto che fare la cosa della master copy non posso scr4ivere sempre a file_size?
 
     // byte size of the payload
     payload = from->count;

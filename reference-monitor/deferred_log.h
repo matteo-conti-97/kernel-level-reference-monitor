@@ -1,4 +1,4 @@
-#define LOG_PATH "/opt/mount/rm_log.txt"
+#define LOG_PATH "/opt/mount/rm_log"
 
 /*Using work queues becaus the deferred work have to use kernel_read which is blocking so we can't use tasklets, 
 another option is use vfs_read with busy waiting but it's not as good as work queues*/

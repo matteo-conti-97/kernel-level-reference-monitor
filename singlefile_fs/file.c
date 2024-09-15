@@ -29,12 +29,12 @@ ssize_t onefilefs_read(struct file *filp, char __user *buf, size_t len, loff_t *
     //*off can be changed concurrently 
     //add synchronization if you need it for any reason
     
-    mutex_lock(&mutex);
+    //mutex_lock(&mutex);
 
     // check that *off is within boundaries
     if (*off >= file_size)
     {
-        mutex_unlock(&mutex);
+        //mutex_unlock(&mutex);
         return 0;
     }
     else if (*off + len > file_size)
@@ -54,7 +54,7 @@ ssize_t onefilefs_read(struct file *filp, char __user *buf, size_t len, loff_t *
     bh = (struct buffer_head *)sb_bread(filp->f_path.dentry->d_inode->i_sb, block_to_read);
     if (!bh)
     {
-        mutex_unlock(&mutex);
+        //mutex_unlock(&mutex);
         return -EIO;
     }
 
@@ -62,7 +62,7 @@ ssize_t onefilefs_read(struct file *filp, char __user *buf, size_t len, loff_t *
     *off += (len - ret);
     brelse(bh);
 
-    mutex_unlock(&mutex);
+    //mutex_unlock(&mutex);
     return len - ret;
 }
 
@@ -79,7 +79,7 @@ ssize_t onefilefs_write(struct kiocb *iocb, struct iov_iter *from)
     uint64_t file_size;
     char *data;
 
-    mutex_lock(&mutex);
+    //mutex_lock(&mutex);
 
     file = iocb->ki_filp;
     the_inode = file->f_inode;
@@ -93,7 +93,7 @@ ssize_t onefilefs_write(struct kiocb *iocb, struct iov_iter *from)
     if (!data)
     {
         printk("%s: [ERROR] Error in kmalloc allocation\n", MOD_NAME);
-        mutex_unlock(&mutex);
+        //mutex_unlock(&mutex);
         return 0;
     }
 
@@ -101,7 +101,7 @@ ssize_t onefilefs_write(struct kiocb *iocb, struct iov_iter *from)
     if (copied_bytes != payload)
     {
         printk("%s: [ERROR] Failed to copy %ld bytes from iov_iter\n", MOD_NAME, payload);
-        mutex_unlock(&mutex);
+        //mutex_unlock(&mutex);
         return 0;
     }
 
@@ -121,7 +121,7 @@ ssize_t onefilefs_write(struct kiocb *iocb, struct iov_iter *from)
     bh = sb_bread(file->f_path.dentry->d_inode->i_sb, block_to_write);
     if (!bh)
     {
-        mutex_unlock(&mutex);
+        //mutex_unlock(&mutex);
         return -EIO;
     }
 
@@ -137,9 +137,34 @@ ssize_t onefilefs_write(struct kiocb *iocb, struct iov_iter *from)
     offset += payload;
 
     kfree(data);
-    mutex_unlock(&mutex);
+    //mutex_unlock(&mutex);
 
     return payload;
+}
+
+int onefilefs_open(struct inode *inode, struct file *file)
+{
+    printk(KERN_INFO "%s: [INFO] Open operation called for file.\n", MOD_NAME);
+
+    // Single instance
+    mutex_lock(&mutex);
+
+    printk(KERN_INFO "%s: [INFO] Successfully opened file.\n", MOD_NAME);
+
+    return 0; // Success
+}
+
+
+int onefilefs_close(struct inode *inode, struct file *file) {
+
+    printk("%s: [INFO] Close operation called for file.\n",MOD_NAME);
+
+   mutex_unlock(&mutex);
+
+   printk("%s: [INFO] File closed\n",MOD_NAME);
+
+   return 0;
+
 }
 
 struct dentry *onefilefs_lookup(struct inode *parent_inode, struct dentry *child_dentry, unsigned int flags)
@@ -213,4 +238,6 @@ const struct file_operations onefilefs_file_operations = {
     .owner = THIS_MODULE,
     .read = onefilefs_read,
     .write_iter = onefilefs_write,
+    .open = onefilefs_open,
+    .release = onefilefs_close,
 };

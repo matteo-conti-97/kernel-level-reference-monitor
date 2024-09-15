@@ -18,7 +18,7 @@
 
 #define SINGLEFILEFS_INODES_BLOCK_NUMBER 1
 
-#define UNIQUE_FILE_NAME "rm_log.txt"
+#define UNIQUE_FILE_NAME "rm_log"
 
 extern struct mutex mutex; //Mutex cause we are going to do I/O operations which are slow so spinlocks are not optimal
 

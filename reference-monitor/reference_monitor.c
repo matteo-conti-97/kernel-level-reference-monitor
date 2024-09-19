@@ -55,13 +55,14 @@ int restore[HACKED_ENTRIES] = {[0 ...(HACKED_ENTRIES - 1)] - 1};
 
 // Change reference monitor state
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
-__SYSCALL_DEFINEx(2, _switch_state, int, state, char *, passwd)
+__SYSCALL_DEFINEx(2, _switch_state, int, state, char __user *, passwd)
 {
 #else
-asmlinkage long sys_switch_state(int state, char *passwd)
+asmlinkage long sys_switch_state(int state, char __user *passwd)
 {
 #endif
         char *hash_passwd;
+        char *kpasswd;
         int prev_state;
         printk("%s: [INFO] switch_state syscall called\n", MODNAME);
 
@@ -72,6 +73,21 @@ asmlinkage long sys_switch_state(int state, char *passwd)
                 return OP_NOT_PERMITTED_ERR;
         }
 
+        //Copy password from user space
+        kpasswd = kmalloc(PASSWD_LEN, GFP_KERNEL);
+        if (kpasswd == NULL)
+        {
+                printk("%s: [ERROR] could not allocate memory for password\n", MODNAME);
+                return -ENOMEM;
+        }
+
+        if(copy_from_user(kpasswd, passwd, PASSWD_LEN))
+        {
+                printk("%s: [ERROR] failed to copy password from userspace\n", MODNAME);
+                kfree(kpasswd);
+                return -EFAULT;
+        }
+
         // Check password hash
         hash_passwd = kmalloc(HASH_HEX_SIZE, GFP_KERNEL);
         if (hash_passwd == NULL)
@@ -80,7 +96,7 @@ asmlinkage long sys_switch_state(int state, char *passwd)
                 return -ENOMEM;
         }
 
-        if (compute_sha256(passwd, hash_passwd) < 0)
+        if (compute_sha256(kpasswd, hash_passwd) < 0)
         {
                 printk("%s: [ERROR] could not compute sha256 of given password\n", MODNAME);
                 return GENERIC_ERR;
@@ -96,6 +112,9 @@ asmlinkage long sys_switch_state(int state, char *passwd)
         }
 
         spin_unlock(&ref_mon.lock);
+
+        kfree(kpasswd);
+        kfree(hash_passwd);
 
         // Switch state
         switch (state)
@@ -109,6 +128,7 @@ asmlinkage long sys_switch_state(int state, char *passwd)
 
                 // If switching from OFF to ON
                 if ((prev_state == OFF) || (prev_state == REC_OFF))
+                        printk("%s: Enabling probes\n", MODNAME);
                         enable_probes();
 
                 break;
@@ -121,6 +141,7 @@ asmlinkage long sys_switch_state(int state, char *passwd)
 
                 // If switching from OFF to ON
                 if ((prev_state == OFF) || (prev_state == REC_OFF))
+                        printk("%s: Enabling probes\n", MODNAME);
                         enable_probes();
 
                 break;
@@ -133,6 +154,7 @@ asmlinkage long sys_switch_state(int state, char *passwd)
 
                 // If switching from ON to OFF
                 if ((prev_state == ON) || (prev_state == REC_ON))
+                        printk("%s: Disabling probes\n", MODNAME);
                         disable_probes();
                 break;
         case OFF:
@@ -144,6 +166,7 @@ asmlinkage long sys_switch_state(int state, char *passwd)
 
                 // If switching from ON to OFF
                 if ((prev_state == ON) || (prev_state == REC_ON))
+                        printk("%s: Disabling probes\n", MODNAME);
                         disable_probes();
                 break;
         default:
@@ -156,13 +179,15 @@ asmlinkage long sys_switch_state(int state, char *passwd)
 
 // Add the path of a new protected resource by the reference monitor
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
-__SYSCALL_DEFINEx(2, _add_protected_res, char *, res_path, char *, passwd)
+__SYSCALL_DEFINEx(2, _add_protected_res, char __user *, res_path, char __user *, passwd)
 {
 #else
-asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
+asmlinkage long sys_add_protected_res(char __user *res_path, char __user *passwd)
 {
 #endif
         char *hash_passwd;
+        char *kpasswd;
+        char *kres_path;
         int res;
         protected_resource *new_protected_resource;
         printk("%s: [INFO] add_protected_res syscall called\n", MODNAME);
@@ -174,17 +199,35 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
                 return OP_NOT_PERMITTED_ERR;
         }
 
-        // Check password hash
-        hash_passwd = kmalloc(HASH_HEX_SIZE, GFP_KERNEL);
-        if (hash_passwd == NULL)
+        //Copy password from user space
+        kpasswd = kmalloc(PASSWD_LEN, GFP_KERNEL);
+        if (kpasswd == NULL)
         {
                 printk("%s: [ERROR] could not allocate memory for password\n", MODNAME);
                 return -ENOMEM;
         }
 
-        if (compute_sha256(passwd, hash_passwd) < 0)
+        if(copy_from_user(kpasswd, passwd, PASSWD_LEN))
+        {
+                printk("%s: [ERROR] failed to copy password from userspace\n", MODNAME);
+                kfree(kpasswd);
+                return -EFAULT;
+        }
+
+        // Check password hash
+        hash_passwd = kmalloc(HASH_HEX_SIZE, GFP_KERNEL);
+        if (hash_passwd == NULL)
+        {
+                printk("%s: [ERROR] could not allocate memory for password\n", MODNAME);
+                kfree(kpasswd);
+                return -ENOMEM;
+        }
+
+        if (compute_sha256(kpasswd, hash_passwd) < 0)
         {
                 printk("%s: [ERROR] could not compute sha256 of given password\n", MODNAME);
+                kfree(kpasswd);
+                kfree(hash_passwd);
                 return GENERIC_ERR;
         }
 
@@ -194,6 +237,10 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
         {
                 printk("%s: [ERROR] given password does not match\n", MODNAME);
                 spin_unlock(&ref_mon.lock);
+
+                kfree(kpasswd);
+                kfree(hash_passwd);
+
                 return PASSWD_MISMATCH_ERR;
         }
 
@@ -203,18 +250,43 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
         {
                 printk("%s: [ERROR] reference monitor is not in reconfiguration mode\n", MODNAME);
                 spin_unlock(&ref_mon.lock);
+                
+                kfree(kpasswd);
+                kfree(hash_passwd);
+                
                 return OP_NOT_PERMITTED_ERR;
         }
 
         spin_unlock(&ref_mon.lock);
 
+        kfree(kpasswd);
+        kfree(hash_passwd);
+
+        // Copy resource path from user space
+        kres_path = kmalloc(MAX_FILENAME_LEN, GFP_KERNEL);
+        if (kres_path == NULL)
+        {
+                printk("%s: [ERROR] could not allocate memory for resource path\n", MODNAME);
+                return -ENOMEM;
+        }
+
+        if(copy_from_user(kres_path, res_path, MAX_FILENAME_LEN))
+        {
+                printk("%s: [ERROR] failed to copy res path from userspace\n", MODNAME);
+                kfree(kres_path);
+                return -EFAULT;
+        }
+
         // Create the new protected resource
-        new_protected_resource = create_protected_resource(res_path);
+        new_protected_resource = create_protected_resource(kres_path);
         if (new_protected_resource == NULL)
         {
                 printk("%s: [ERROR] could not create new protected resource\n", MODNAME);
+                kfree(kres_path);
                 return GENERIC_ERR;
         }
+
+        kfree(kres_path);
 
         // Add the new protected resource to the list
         res = add_new_protected_resource(&ref_mon, new_protected_resource);
@@ -224,19 +296,21 @@ asmlinkage long sys_add_protected_res(char *res_path, char *passwd)
                 return RES_ALREADY_PROTECTED_ERR;
         }
         print_protected_resources(&ref_mon);
-
+        
         return SUCCESS;
 }
 
 // Remove the path of a protected resource by the reference monitor
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
-__SYSCALL_DEFINEx(2, _rm_protected_res, char *, res_path, char *, passwd)
+__SYSCALL_DEFINEx(2, _rm_protected_res, char __user *, res_path, char __user *, passwd)
 {
 #else
-asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
+asmlinkage long sys_rm_protected_res(char __user *res_path, char __user *passwd)
 {
 #endif
         int res;
+        char *kres_path;
+        char *kpasswd;
         char *hash_passwd;
         printk("%s: [INFO] rm_protected_res syscall called\n", MODNAME);
 
@@ -247,17 +321,35 @@ asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
                 return OP_NOT_PERMITTED_ERR;
         }
 
-        // Check password hash
-        hash_passwd = kmalloc(HASH_HEX_SIZE, GFP_KERNEL);
-        if (hash_passwd == NULL)
+        //Copy password from user space
+        kpasswd = kmalloc(PASSWD_LEN, GFP_KERNEL);
+        if (kpasswd == NULL)
         {
                 printk("%s: [ERROR] could not allocate memory for password\n", MODNAME);
                 return -ENOMEM;
         }
 
-        if (compute_sha256(passwd, hash_passwd) < 0)
+        if(copy_from_user(kpasswd, passwd, PASSWD_LEN))
         {
-                printk("%s: [ERROR] could not compute sha256 of given password\n", MODNAME);
+                printk("%s: [ERROR] failed to copy password from userspace\n", MODNAME);
+                kfree(kpasswd);
+                return -EFAULT;
+        }
+
+        // Check password hash
+        hash_passwd = kmalloc(HASH_HEX_SIZE, GFP_KERNEL);
+        if (hash_passwd == NULL)
+        {
+                printk("%s: [ERROR] could not allocate memory for password\n", MODNAME);
+                kfree(kpasswd);
+                return -ENOMEM;
+        }
+
+        if (compute_sha256(kpasswd, hash_passwd) < 0)
+        {
+                printk("%s: [ERROR] could not compute sha256 of given password\n", MODNAME);           
+                kfree(kpasswd);
+                kfree(hash_passwd);
                 return GENERIC_ERR;
         }
 
@@ -266,41 +358,67 @@ asmlinkage long sys_rm_protected_res(char *res_path, char *passwd)
         if (!compare_hashes(hash_passwd, ref_mon.hash_passwd, HASH_HEX_SIZE))
         {
                 printk("%s: [ERROR] given password does not match\n", MODNAME);
-                spin_unlock(&ref_mon.lock);
+                spin_unlock(&ref_mon.lock);     
+                kfree(kpasswd);
+                kfree(hash_passwd);
                 return PASSWD_MISMATCH_ERR;
         }
 
-        
 
         // Check if reference monitor is in reconfiguration mode
         if ((ref_mon.state != REC_ON) && (ref_mon.state != REC_OFF))
         {
                 printk("%s: [ERROR] reference monitor is not in reconfiguration mode\n", MODNAME);
                 spin_unlock(&ref_mon.lock);
+                kfree(kpasswd);
+                kfree(hash_passwd);
                 return OP_NOT_PERMITTED_ERR;
         }
 
         spin_unlock(&ref_mon.lock);
 
-        res = remove_protected_resource(&ref_mon, res_path);
+        kfree(kpasswd);
+        kfree(hash_passwd);
+
+        // Copy resource path from user space
+        kres_path = kmalloc(MAX_FILENAME_LEN, GFP_KERNEL);
+        if (kres_path == NULL)
+        {
+                printk("%s: [ERROR] could not allocate memory for resource path\n", MODNAME);
+                return -ENOMEM;
+        }
+
+        if(copy_from_user(kres_path, res_path, MAX_FILENAME_LEN))
+        {
+                printk("%s: [ERROR] failed to copy res path from userspace\n", MODNAME);
+                kfree(kres_path);
+                return -EFAULT;
+        }
+
+        res = remove_protected_resource(&ref_mon, kres_path);
         if(res == RES_NOT_PROTECTED_ERR){
                 printk("%s: [ERROR] resource not protected\n", MODNAME);
+                kfree(kres_path);
                 return RES_NOT_PROTECTED_ERR;
         }
         print_protected_resources(&ref_mon);
+
+        kfree(kres_path);
 
         return SUCCESS;
 }
 
 // Change reference monitor password
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
-__SYSCALL_DEFINEx(2, _change_passwd, char *, new_passwd, char *, old_passwd)
+__SYSCALL_DEFINEx(2, _change_passwd, char __user *, new_passwd, char __user *, old_passwd)
 {
 #else
-asmlinkage long sys_change_passwd(char *new_passwd, char *old_passwd)
+asmlinkage long sys_change_passwd(char __user *new_passwd, char __user *old_passwd)
 {
 #endif
         char *hash_passwd;
+        char *knew_passwd;
+        char *kold_passwd;
         printk("%s: [INFO] change_passwd syscall called\n", MODNAME);
 
         // Check effective user id to be root
@@ -310,17 +428,53 @@ asmlinkage long sys_change_passwd(char *new_passwd, char *old_passwd)
                 return OP_NOT_PERMITTED_ERR;
         }
 
+        //Copy password from user space
+        knew_passwd = kmalloc(PASSWD_LEN, GFP_KERNEL);
+        if (knew_passwd == NULL)
+        {
+                printk("%s: [ERROR] could not allocate memory for new password\n", MODNAME);
+                return -ENOMEM;
+        }
+
+        if(copy_from_user(knew_passwd, new_passwd, PASSWD_LEN))
+        {
+                printk("%s: [ERROR] failed to copy new password from userspace\n", MODNAME);
+                kfree(knew_passwd);
+                return -EFAULT;
+        }
+
+        kold_passwd = kmalloc(PASSWD_LEN, GFP_KERNEL);
+        if (kold_passwd == NULL)
+        {
+                printk("%s: [ERROR] could not allocate memory for old password\n", MODNAME);
+                kfree(knew_passwd);
+                return -ENOMEM;
+        }
+
+        if(copy_from_user(kold_passwd, old_passwd, PASSWD_LEN))
+        {
+                printk("%s: [ERROR] failed to copy old password from userspace\n", MODNAME);
+                kfree(knew_passwd);
+                kfree(kold_passwd);
+                return -EFAULT;
+        }
+
         // Check password hash
         hash_passwd = kmalloc(HASH_HEX_SIZE, GFP_KERNEL);
         if (hash_passwd == NULL)
         {
                 printk("%s: [ERROR] could not allocate memory for password hash\n", MODNAME);
+                kfree(knew_passwd);
+                kfree(kold_passwd);
                 return -ENOMEM;
         }
 
-        if (compute_sha256(old_passwd, hash_passwd) < 0)
+        if (compute_sha256(kold_passwd, hash_passwd) < 0)
         {
                 printk("%s: [ERROR] could not compute sha256 of given password\n", MODNAME);
+                kfree(knew_passwd);
+                kfree(kold_passwd);
+                kfree(hash_passwd);
                 return GENERIC_ERR;
         }
 
@@ -330,6 +484,9 @@ asmlinkage long sys_change_passwd(char *new_passwd, char *old_passwd)
         {
                 printk("%s: [ERROR] given password does not match\n", MODNAME);
                 spin_unlock(&ref_mon.lock);
+                kfree(knew_passwd);
+                kfree(kold_passwd);
+                kfree(hash_passwd);
                 return PASSWD_MISMATCH_ERR;
         }
 
@@ -340,17 +497,28 @@ asmlinkage long sys_change_passwd(char *new_passwd, char *old_passwd)
         {
                 printk("%s: [ERROR] reference monitor is not in reconfiguration mode\n", MODNAME);
                 spin_unlock(&ref_mon.lock);
+                kfree(knew_passwd);
+                kfree(kold_passwd);
+                kfree(hash_passwd);
                 return OP_NOT_PERMITTED_ERR;
         }
 
-        if (compute_sha256(new_passwd, ref_mon.hash_passwd) < 0)
+        //Compute and store new password hash
+        if (compute_sha256(knew_passwd, ref_mon.hash_passwd) < 0)
         {
                 printk("%s: [ERROR] could not compute sha256 of password\n", MODNAME);
                 spin_unlock(&ref_mon.lock);
+                kfree(knew_passwd);
+                kfree(kold_passwd);
+                kfree(hash_passwd);
                 return GENERIC_ERR;
         }
 
         spin_unlock(&ref_mon.lock);
+
+        kfree(knew_passwd);
+        kfree(kold_passwd);
+        kfree(hash_passwd);
 
         return SUCCESS;
 }
@@ -972,7 +1140,7 @@ int enable_probes()
         for (i = 0; i < KPROBES_SIZE; i++)
         {
 
-                setup_probe(&kprobe_array[i], symbol_names[i], NULL, NULL);
+                //setup_probe(&kprobe_array[i], symbol_names[i], NULL, NULL);
                 ret = enable_kretprobe(&kprobe_array[i]);
                 if (ret < 0)
                 {
@@ -997,7 +1165,6 @@ void disable_probes()
 
         printk("%s: [INFO] Kretprobes correctly removed\n", MODNAME);
 
-        kfree(kprobe_array);
 }
 
 //DEFERRED LOGGING
@@ -1154,7 +1321,7 @@ build_log_row:
 
         filp_close(exe_file, NULL);
         filp_close(log_file, NULL);
-        kfree(exe_content);
+        kfree(exe_content); // prova
         kfree(task);
 }
 

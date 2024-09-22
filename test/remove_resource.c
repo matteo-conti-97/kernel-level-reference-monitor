@@ -50,6 +50,8 @@ int main(int argc, char *argv[]){
     passwd = malloc(strlen(argv[2]) + 1);
     strcpy(passwd, argv[2]);
 
+    printf("Removing resource %s\n", path);
+
     check_rm(path, passwd);
 
 	return 0;

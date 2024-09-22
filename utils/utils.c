@@ -9,7 +9,7 @@ bool compare_hashes(const char *hash1, const char *hash2, size_t length) {
     return memcmp(hash1, hash2, length) == 0;
 }
 
-int compute_sha256(const char *data, char *output) {
+int compute_sha256(const char *data, long data_size, char *output) {
     struct crypto_shash *tfm;
     struct shash_desc *shash;
     int ret, i;
@@ -39,7 +39,7 @@ int compute_sha256(const char *data, char *output) {
     }
 
     // Update with data
-    ret = crypto_shash_update(shash, data, strlen(data));
+    ret = crypto_shash_update(shash, data, data_size);
     if (ret) {
         kfree(shash);
         crypto_free_shash(tfm);

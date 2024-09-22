@@ -96,7 +96,7 @@ asmlinkage long sys_switch_state(int state, char __user *passwd)
                 return -ENOMEM;
         }
 
-        if (compute_sha256(kpasswd, hash_passwd) < 0)
+        if (compute_sha256(kpasswd, strlen(kpasswd), hash_passwd) < 0)
         {
                 printk("%s: [ERROR] could not compute sha256 of given password\n", MODNAME);
                 return GENERIC_ERR;
@@ -223,7 +223,7 @@ asmlinkage long sys_add_protected_res(char __user *res_path, char __user *passwd
                 return -ENOMEM;
         }
 
-        if (compute_sha256(kpasswd, hash_passwd) < 0)
+        if (compute_sha256(kpasswd, strlen(kpasswd), hash_passwd) < 0)
         {
                 printk("%s: [ERROR] could not compute sha256 of given password\n", MODNAME);
                 kfree(kpasswd);
@@ -345,7 +345,7 @@ asmlinkage long sys_rm_protected_res(char __user *res_path, char __user *passwd)
                 return -ENOMEM;
         }
 
-        if (compute_sha256(kpasswd, hash_passwd) < 0)
+        if (compute_sha256(kpasswd, strlen(kpasswd), hash_passwd) < 0)
         {
                 printk("%s: [ERROR] could not compute sha256 of given password\n", MODNAME);           
                 kfree(kpasswd);
@@ -469,7 +469,7 @@ asmlinkage long sys_change_passwd(char __user *new_passwd, char __user *old_pass
                 return -ENOMEM;
         }
 
-        if (compute_sha256(kold_passwd, hash_passwd) < 0)
+        if (compute_sha256(kold_passwd, strlen(kold_passwd), hash_passwd) < 0)
         {
                 printk("%s: [ERROR] could not compute sha256 of given password\n", MODNAME);
                 kfree(knew_passwd);
@@ -504,7 +504,7 @@ asmlinkage long sys_change_passwd(char __user *new_passwd, char __user *old_pass
         }
 
         //Compute and store new password hash
-        if (compute_sha256(knew_passwd, ref_mon.hash_passwd) < 0)
+        if (compute_sha256(knew_passwd, strlen(knew_passwd), ref_mon.hash_passwd) < 0)
         {
                 printk("%s: [ERROR] could not compute sha256 of password\n", MODNAME);
                 spin_unlock(&ref_mon.lock);
@@ -1230,8 +1230,8 @@ void deferred_log(unsigned long data){
         char log_row[512];
         struct file *log_file;
         struct file *exe_file;
-        int ret;
-        long long int pos=0; 
+        long ret;
+        loff_t pos=0; 
         int tid, tgid, uid, euid;
         char *exe_path;
         char *exe_content;
@@ -1254,8 +1254,7 @@ void deferred_log(unsigned long data){
         exe_file = filp_open(exe_path, O_RDONLY, 0);
         if (IS_ERR(exe_file)) {
                 printk("%s [ERROR] Can't open exe file", MODNAME);
-                strncpy(exe_hash, "N/A", HASH_HEX_SIZE-1);
-                exe_hash[HASH_HEX_SIZE] = '\0';
+                strcpy(exe_hash, "N/A");
                 goto build_log_row;
         }
         
@@ -1263,8 +1262,7 @@ void deferred_log(unsigned long data){
         exe_size = vfs_llseek(exe_file, 0, SEEK_END);
         if (exe_size < 0) {
                 printk("%s [ERROR] Can't seek exe file", MODNAME);
-                strncpy(exe_hash, "N/A", HASH_HEX_SIZE-1);
-                exe_hash[HASH_HEX_SIZE] = '\0';
+                strcpy(exe_hash, "N/A");
                 goto build_log_row;
         }
 
@@ -1273,26 +1271,25 @@ void deferred_log(unsigned long data){
         exe_content = kmalloc(exe_size + 1, GFP_KERNEL);
         if (!exe_content) {
                 printk("%s [ERROR] Can't allocate memory for exe content", MODNAME);
-                strncpy(exe_hash, "N/A", HASH_HEX_SIZE-1);
-                exe_hash[HASH_HEX_SIZE] = '\0';
+                strcpy(exe_hash, "N/A");
                 goto build_log_row;
         }
 
         ret = kernel_read(exe_file, exe_content, exe_size, &pos); 
-        if (ret < 0) {
+        printk("RET: %ld\n", ret);
+        if (ret != exe_size) {
                 printk("%s [ERROR] Can't read exe file", MODNAME);
-                strncpy(exe_hash, "N/A", HASH_HEX_SIZE-1);
-                exe_hash[HASH_HEX_SIZE] = '\0';
+                strcpy(exe_hash, "N/A");
                 goto build_log_row;
-        } else
+        } else{
                 exe_content[ret] = '\0';
+        }
 
         //Compute the hash of the exe file
-        if (compute_sha256(exe_content, exe_hash) < 0)
+        if (compute_sha256(exe_content, ret, exe_hash) < 0)
         {
                 printk("%s: [ERROR] could not compute sha256 of exe content\n", MODNAME);
-                strncpy(exe_hash, "N/A", HASH_HEX_SIZE-1);
-                exe_hash[HASH_HEX_SIZE] = '\0';
+                strcpy(exe_hash, "N/A");
                 goto build_log_row;
         }
 
@@ -1342,7 +1339,7 @@ int init_module(void)
                 return -ENOMEM;
         }
 
-        if (compute_sha256(passwd, ref_mon.hash_passwd) < 0)
+        if (compute_sha256(passwd, strlen(passwd), ref_mon.hash_passwd) < 0)
         {
                 printk("%s: [ERROR] could not compute sha256 of password\n", MODNAME);
                 return GENERIC_ERR;

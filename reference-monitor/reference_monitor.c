@@ -295,6 +295,8 @@ asmlinkage long sys_add_protected_res(char __user *res_path, char __user *passwd
                 kfree(new_protected_resource);
                 return RES_ALREADY_PROTECTED_ERR;
         }
+
+        //TODO Only for debug purposes, remove in production
         print_protected_resources(&ref_mon);
         
         return SUCCESS;
@@ -401,6 +403,8 @@ asmlinkage long sys_rm_protected_res(char __user *res_path, char __user *passwd)
                 kfree(kres_path);
                 return RES_NOT_PROTECTED_ERR;
         }
+
+        //TODO Only for debug purposes, remove in production
         print_protected_resources(&ref_mon);
 
         kfree(kres_path);
@@ -1276,7 +1280,6 @@ void deferred_log(unsigned long data){
         }
 
         ret = kernel_read(exe_file, exe_content, exe_size, &pos); 
-        printk("RET: %ld\n", ret);
         if (ret != exe_size) {
                 printk("%s [ERROR] Can't read exe file", MODNAME);
                 strcpy(exe_hash, "N/A");
@@ -1310,7 +1313,7 @@ build_log_row:
                 
         }
 
-        ret = kernel_write(log_file, log_row, strlen(log_row), &log_file->f_pos); //TODO Bloccante vedere se workqueue va bene
+        ret = kernel_write(log_file, log_row, strlen(log_row), &log_file->f_pos);
         if (ret < 0)
         {
                 printk("%s [ERROR] Error in writing on log file", MODNAME);
@@ -1318,7 +1321,7 @@ build_log_row:
 
         filp_close(exe_file, NULL);
         filp_close(log_file, NULL);
-        kfree(exe_content); // prova
+        kfree(exe_content);
         kfree(task);
 }
 

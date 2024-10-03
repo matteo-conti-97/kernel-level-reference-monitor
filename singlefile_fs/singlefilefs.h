@@ -22,6 +22,8 @@
 
 extern struct mutex mutex; //Mutex cause we are going to do I/O operations which are slow so spinlocks are not optimal
 
+extern loff_t master_offset; //Global variable to keep track of the offset in the file will be locked to avoid concurrency overwrite of the last line on append
+
 //inode definition
 struct onefilefs_inode {
 	mode_t mode;//not exploited

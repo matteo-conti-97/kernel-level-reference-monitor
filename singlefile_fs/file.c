@@ -76,15 +76,14 @@ ssize_t onefilefs_write(struct kiocb *iocb, struct iov_iter *from)
     size_t payload;
     struct file *file;
     struct inode *the_inode;
-    uint64_t file_size;
     char *data;
 
     //mutex_lock(&mutex);
 
     file = iocb->ki_filp;
     the_inode = file->f_inode;
-    offset = file->f_pos;
-    file_size = i_size_read(the_inode); //TODO Piuttosto che fare la cosa della master copy non posso scr4ivere sempre a file_size?
+    
+
 
     // byte size of the payload
     payload = from->count;
@@ -93,7 +92,6 @@ ssize_t onefilefs_write(struct kiocb *iocb, struct iov_iter *from)
     if (!data)
     {
         printk("%s: [ERROR] Error in kmalloc allocation\n", MOD_NAME);
-        //mutex_unlock(&mutex);
         return 0;
     }
 
@@ -101,11 +99,13 @@ ssize_t onefilefs_write(struct kiocb *iocb, struct iov_iter *from)
     if (copied_bytes != payload)
     {
         printk("%s: [ERROR] Failed to copy %ld bytes from iov_iter\n", MOD_NAME, payload);
-        //mutex_unlock(&mutex);
         return 0;
     }
 
-    offset = file_size;
+    
+    mutex_lock(&mutex); // lock to read master_offset without concurrency
+
+    offset = master_offset;
 
     // Append only
     block_offset = offset % DEFAULT_BLOCK_SIZE;
@@ -121,7 +121,7 @@ ssize_t onefilefs_write(struct kiocb *iocb, struct iov_iter *from)
     bh = sb_bread(file->f_path.dentry->d_inode->i_sb, block_to_write);
     if (!bh)
     {
-        //mutex_unlock(&mutex);
+        mutex_unlock(&mutex);
         return -EIO;
     }
 
@@ -129,15 +129,18 @@ ssize_t onefilefs_write(struct kiocb *iocb, struct iov_iter *from)
 
     mark_buffer_dirty(bh);
 
-    if (offset + payload > file_size)
-        i_size_write(the_inode, offset + payload);
+    
+    i_size_write(the_inode, offset + payload);
 
     brelse(bh);
 
     offset += payload;
 
+    master_offset = offset; // update the master offset
+
+    mutex_unlock(&mutex);
+
     kfree(data);
-    //mutex_unlock(&mutex);
 
     return payload;
 }
@@ -145,9 +148,6 @@ ssize_t onefilefs_write(struct kiocb *iocb, struct iov_iter *from)
 int onefilefs_open(struct inode *inode, struct file *file)
 {
     printk(KERN_INFO "%s: [INFO] Open operation called for file.\n", MOD_NAME);
-
-    // Single instance
-    mutex_lock(&mutex);
 
     printk(KERN_INFO "%s: [INFO] Successfully opened file.\n", MOD_NAME);
 
@@ -159,9 +159,7 @@ int onefilefs_close(struct inode *inode, struct file *file) {
 
     printk("%s: [INFO] Close operation called for file.\n",MOD_NAME);
 
-   mutex_unlock(&mutex);
-
-   printk("%s: [INFO] File closed\n",MOD_NAME);
+    printk("%s: [INFO] File closed\n",MOD_NAME);
 
    return 0;
 

@@ -22,6 +22,7 @@ static struct super_operations singlefilefs_super_ops = {};
 static struct dentry_operations singlefilefs_dentry_ops = {};
 
 struct mutex mutex;
+loff_t master_offset;
 
 int singlefilefs_fill_super(struct super_block *sb, void *data, int silent)
 {
@@ -145,6 +146,7 @@ static int singlefilefs_init(void)
         printk("%s: [ERROR] Failed to register singlefilefs - error %d", MOD_NAME, ret);
 
     mutex_init(&mutex);
+    master_offset = 0;
 
     return ret;
 }
